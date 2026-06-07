@@ -44,6 +44,8 @@ namespace Puzzle
     public struct LoopSquare
     {
         Turn loopTurn;
+        public Turn LoopTurn => loopTurn;
+        public bool IsLoop => loopTurn != Turn.None;
         public enum Turn
         {
             None,
@@ -53,10 +55,10 @@ namespace Puzzle
 
         (Point, Component)[] loop; //ループを構成する4点とそのコンポーネント
 
-        public (Point, Component) TR => loop[0];
-        public (Point, Component) TL => loop[2];
-        public (Point, Component) BR => loop[1];
-        public (Point, Component) BL => loop[3];
+        public (Point, Component) L => loop[0];
+        public (Point, Component) O1 => loop[1];
+        public (Point, Component) O2 => loop[2];
+        public (Point, Component) P => loop[3];
 
         public LoopSquare((Point, Component) p1, (Point, Component) p2, (Point, Component) p3, (Point, Component) p4)
         {
@@ -79,10 +81,10 @@ namespace Puzzle
                 var O1 = new ModInt(i + 1, 4);
                 var O2 = new ModInt(i + 2, 4);
                 var P = new ModInt(i + 3, 4);
-                if (sorted[L].Item2 == Component.L && sorted[O1].Item2 == Component.O && sorted[O2].Item2 == Component.O && sorted[P].Item2 == Component.P)
+                if (rightTurnAllay[L].Item2 == Component.L && rightTurnAllay[O1].Item2 == Component.O && rightTurnAllay[O2].Item2 == Component.O && rightTurnAllay[P].Item2 == Component.P)
                 {
                     loopTurn = Turn.Right;
-                    loop = new (Point, Component)[] { sorted[L], sorted[O1], sorted[O2], sorted[P] };
+                    loop = new (Point, Component)[] { rightTurnAllay[L], rightTurnAllay[O1], rightTurnAllay[O2], rightTurnAllay[P] };
                 }
             }
             for (int i = 0; i < 4; i++)
