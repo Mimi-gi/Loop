@@ -168,7 +168,8 @@ namespace Puzzle
         Op, //強化O
         Pp, //強化P
         Block, //通常
-        Player
+        Player,
+        Pillar
     }
     public enum EventType
     {
