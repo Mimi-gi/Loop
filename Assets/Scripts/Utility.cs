@@ -1,5 +1,6 @@
-using UnityEngine;
-
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 public struct ModInt
 {
@@ -41,5 +42,31 @@ public struct ModInt
     public static implicit operator int(ModInt a)
     {
         return a.n;
+    }
+}
+
+public class SignedMaximTracker
+{
+    public SignedMaximTracker()
+    {
+        factorials = new List<int>();
+    }
+    List<int> factorials;
+    public int Value => Helper();
+    public void Add(int value)
+    {
+        factorials.Add(value);
+    }
+    int Helper()
+    {
+        if (factorials.Count(x => x < 0) == factorials.Count(x => x > 0)) return 0;
+        if (factorials.Count(x => x < 0) > factorials.Count(x => x > 0))
+        {
+            return factorials.Min();
+        }
+        else
+        {
+            return factorials.Max();
+        }
     }
 }

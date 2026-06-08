@@ -4,12 +4,117 @@ using System.Linq;
 
 namespace Puzzle
 {
+    public struct LoopSquare //タグまでは判定しない
+    {
+        Turn loopTurn;
+        public Turn LoopTurn => loopTurn;
+        public bool IsLoop => loopTurn != Turn.None;
+        public int Surface => loopTurn == Turn.None ? 0 : (int)((L.p-O1.p).norm*(O2.p-O1.p).norm/2); //ループの面積。ループでない場合は0
+        public enum Turn
+        {
+            None,
+            Left,
+            Right
+        }
+
+        public int MaxX => loop.Max(p => p.Item1.X);
+        public int MinX => loop.Min(p => p.Item1.X);
+        public int MaxY => loop.Max(p => p.Item1.Y);
+        public int MinY => loop.Min(p => p.Item1.Y);
 
 
+        (Point, Component)[] loop; //ループを構成する4点とそのコンポーネント
+
+        public (Point p, Component c) L => loop[0];
+        public (Point p, Component c) O1 => loop[1];
+        public (Point p, Component c) O2 => loop[2];
+        public (Point p, Component c) P => loop[3];
+
+        
+
+        public LoopSquare((Point, Component) p1, (Point, Component) p2, (Point, Component) p3, (Point, Component) p4)
+        {
+            loopTurn = Turn.None;
+            bool isL(Component c) => c == Component.L || c == Component.Lp;
+            bool isO(Component c) => c == Component.O || c == Component.Op;
+            bool isP(Component c) => c == Component.P || c == Component.Pp;
+
+            (Point, Component)[] sorted = new (Point, Component)[] { p1, p2, p3, p4 }.OrderBy(p => p.Item1.X).ThenBy(p => p.Item1.Y).ToArray();
+            Point[] points = sorted.Select(p => p.Item1).Distinct().ToArray();
+            int[] pointXs = points.Select(p => p.X).Distinct().ToArray();
+            int[] pointYs = points.Select(p => p.Y).Distinct().ToArray();
+
+            if (points.Length != 4 || pointXs.Length != 2 || pointYs.Length != 2)
+            {
+                loop = sorted;
+            }
+
+            (Point, Component)[] rightTurnAllay = new (Point, Component)[] { sorted[0], sorted[1], sorted[3], sorted[2] }; //右上、右下、左上、左下
+            for (int i = 0; i < 4; i++)
+            {
+                var L = new ModInt(i, 4);
+                var O1 = new ModInt(i + 1, 4);
+                var O2 = new ModInt(i + 2, 4);
+                var P = new ModInt(i + 3, 4);
+                if (isL(rightTurnAllay[L].Item2) && isO(rightTurnAllay[O1].Item2) && isO(rightTurnAllay[O2].Item2) && isP(rightTurnAllay[P].Item2))
+                {
+                    loopTurn = Turn.Right;
+                    loop = new (Point, Component)[] { rightTurnAllay[L], rightTurnAllay[O1], rightTurnAllay[O2], rightTurnAllay[P] };
+                }
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                var L = new ModInt(i, 4);
+                var O1 = new ModInt(i - 1, 4);
+                var O2 = new ModInt(i - 2, 4);
+                var P = new ModInt(i - 3, 4);
+                if (isL(rightTurnAllay[L].Item2) && isO(rightTurnAllay[O1].Item2) && isO(rightTurnAllay[O2].Item2) && isP(rightTurnAllay[P].Item2))
+                {
+                    loopTurn = Turn.Left;
+                    loop = new (Point, Component)[] { rightTurnAllay[L], rightTurnAllay[O1], rightTurnAllay[O2], rightTurnAllay[P] };
+                }
+            }
+
+            loop = sorted;
+        }
+    }
+    public class SMTPoints
+    {
+
+        SignedMaximTracker xTracker;
+        SignedMaximTracker yTracker;
+        public SMTPoints(Point initial)
+        {
+            xTracker = new SignedMaximTracker();
+            yTracker = new SignedMaximTracker();
+            Add(initial);
+        }
+        public void Add(Point p)
+        {
+            xTracker.Add(p.X);
+            yTracker.Add(p.Y);
+        }
+        public Point Value => new Point(xTracker.Value, yTracker.Value);
+    }
+    public enum Component
+    {
+        Empty,
+        Wall, //壁
+        L,
+        O,
+        P,
+        Lp, //強化L
+        Op, //強化O
+        Pp, //強化P
+        Block, //通常
+        Player,
+        Pillar
+    }
     public struct Point
     {
         public int X { get; }
         public int Y { get; }
+        public float norm => (float)Math.Sqrt(X * X + Y * Y);
         public Point(int x, int y)
         {
             X = x;
@@ -36,74 +141,31 @@ namespace Puzzle
         {
             return new Point(a.X * b.X, a.Y * b.Y);
         }
+        public static bool operator ==(Point a, Point b)
+        {
+            return a.X == b.X && a.Y == b.Y;
+        }
+        public static bool operator !=(Point a, Point b)
+        {
+            return !(a == b);
+        }
+        public static bool operator <(Point a, Point b) //辞書式
+        {
+            return a.X < b.X || (a.X == b.X && a.Y < b.Y);
+        }
+        public static bool operator >(Point a, Point b)
+        {
+            return a.X > b.X || (a.X == b.X && a.Y > b.Y);
+        }
 
     }
 
-
-
-    public struct LoopSquare
+    public struct Tag
     {
-        Turn loopTurn;
-        public Turn LoopTurn => loopTurn;
-        public bool IsLoop => loopTurn != Turn.None;
-        public enum Turn
-        {
-            None,
-            Left,
-            Right
-        }
-
-        (Point, Component)[] loop; //ループを構成する4点とそのコンポーネント
-
-        public (Point, Component) L => loop[0];
-        public (Point, Component) O1 => loop[1];
-        public (Point, Component) O2 => loop[2];
-        public (Point, Component) P => loop[3];
-
-        public LoopSquare((Point, Component) p1, (Point, Component) p2, (Point, Component) p3, (Point, Component) p4)
-        {
-            loopTurn = Turn.None;
-
-            (Point, Component)[] sorted = new (Point, Component)[] { p1, p2, p3, p4 }.OrderBy(p => p.Item1.X).ThenBy(p => p.Item1.Y).ToArray();
-            Point[] points = sorted.Select(p => p.Item1).Distinct().ToArray();
-            int[] pointXs = points.Select(p => p.X).Distinct().ToArray();
-            int[] pointYs = points.Select(p => p.Y).Distinct().ToArray();
-
-            if (points.Length != 4 || pointXs.Length != 2 || pointYs.Length != 2)
-            {
-                loop = sorted;
-            }
-
-            (Point, Component)[] rightTurnAllay = new (Point, Component)[] { sorted[0], sorted[1], sorted[3], sorted[2] }; //右上、右下、左上、左下
-            for (int i = 0; i < 4; i++)
-            {
-                var L = new ModInt(i, 4);
-                var O1 = new ModInt(i + 1, 4);
-                var O2 = new ModInt(i + 2, 4);
-                var P = new ModInt(i + 3, 4);
-                if (rightTurnAllay[L].Item2 == Component.L && rightTurnAllay[O1].Item2 == Component.O && rightTurnAllay[O2].Item2 == Component.O && rightTurnAllay[P].Item2 == Component.P)
-                {
-                    loopTurn = Turn.Right;
-                    loop = new (Point, Component)[] { rightTurnAllay[L], rightTurnAllay[O1], rightTurnAllay[O2], rightTurnAllay[P] };
-                }
-            }
-            for (int i = 0; i < 4; i++)
-            {
-                var L = new ModInt(i, 4);
-                var O1 = new ModInt(i - 1, 4);
-                var O2 = new ModInt(i - 2, 4);
-                var P = new ModInt(i - 3, 4);
-                if (rightTurnAllay[L].Item2 == Component.L && rightTurnAllay[O1].Item2 == Component.O && rightTurnAllay[O2].Item2 == Component.O && rightTurnAllay[P].Item2 == Component.P)
-                {
-                    loopTurn = Turn.Left;
-                    loop = new (Point, Component)[] { rightTurnAllay[L], rightTurnAllay[O1], rightTurnAllay[O2], rightTurnAllay[P] };
-                }
-            }
-
-            loop = sorted;
-        }
-
+        //タグの抽象化
     }
+
+
 
     public class TaggedGrid<T>
     {
@@ -190,6 +252,7 @@ namespace Puzzle
             }
             return result;
         }
+
     }
     public class WholeBoardData
     {
@@ -198,6 +261,7 @@ namespace Puzzle
         TaggedGrid<Component> components;
         (bool, bool, bool, bool) isConnected; //上下左右のつながりを管理
         Point playerPosition;
+        HashSet<LoopSquare> loops; //ループの管理
         public int Size { get => size; }
         public int SmallSize { get => smallSize; }
         public TaggedGrid<Component> Components { get => components; }
@@ -469,7 +533,7 @@ namespace Puzzle
                     }
                 }
             }
-            return (north, south, east, west); //仮実装
+            return (north, south, east, west);
         }
         public void Connect()
         {
@@ -485,47 +549,107 @@ namespace Puzzle
 
         void LoopProcess()
         {
-            //盤面の走査
+            HashSet<(Point p, Component c, (int, int) tag)> L = new HashSet<(Point p, Component c, (int, int) tag)>();
+            HashSet<(Point p, Component c, (int, int) tag)> O = new HashSet<(Point p, Component c, (int, int) tag)>();
+            HashSet<(Point p, Component c, (int, int) tag)> P = new HashSet<(Point p, Component c, (int, int) tag)>();
+
+            for (int x = 0; x < size; x++)
+            {
+                for (int y = 0; y < size; y++)
+                {
+                    var p = new Point(x, y);
+                    var c = components.Get(p);
+                    var tag = components.GetTag(p)[0];
+                    switch (c)
+                    {
+                        case Component.L:
+                        case Component.Lp:
+                            L.Add((p, c, tag));
+                            break;
+                        case Component.O:
+                        case Component.Op:
+                            O.Add((p, c, tag));
+                            break;
+                        case Component.P:
+                        case Component.Pp:
+                            P.Add((p, c, tag));
+                            break;
+                    }
+                }
+            }
+            HashSet<LoopSquare> newRloops = new HashSet<LoopSquare>();
+            HashSet<LoopSquare> newLloops = new HashSet<LoopSquare>();
+            foreach (var l in L)
+            {
+                if (l.c == Component.L)
+                {
+                    var Os = O.Where(o => o.tag == l.tag);
+                    var Ps = P.Where(p => (p.tag == l.tag) && (p.p.X == l.p.X || p.p.Y == l.p.Y)); //LとPは同じ行か列にある必要がある
+                    var Tuples = from o1 in Os from o2 in Os from p in Ps where o1.p < o2.p select (o1, o2, p);
+                    foreach (var t in Tuples)
+                    {
+                        LoopSquare loopSquare = new LoopSquare((l.p, l.c), (t.o1.p, t.o1.c), (t.o2.p, t.o2.c), (t.p.p, t.p.c));
+                        if (loopSquare.IsLoop)
+                        {
+                            if (loops.Contains(loopSquare))
+                            {
+                                //どうしようね
+                            }
+                            else
+                            {
+                                if (loopSquare.LoopTurn == LoopSquare.Turn.Right)
+                                {
+                                    newRloops.Add(loopSquare);
+                                }
+                                else if (loopSquare.LoopTurn == LoopSquare.Turn.Left)
+                                {
+                                    newLloops.Add(loopSquare);
+                                }
+                                loops.Add(loopSquare);
+                            }
+                        }
+                    }
+                }
+            }
+            var list = newRloops.ToList();
+            list.AddRange(newLloops.ToList());
+            list.OrderBy(a => a.Surface); //面積が小さい順に
+            
+
         }
 
-    }
 
-    public enum Direction
-    {
-        North,
-        South,
-        East,
-        West,
-        Up,
-        Down
-    }
+        void ProcessWallMove()
+        {
 
-    public enum Component
-    {
-        Empty,
-        Wall, //壁
-        L,
-        O,
-        P,
-        Lp, //強化L
-        Op, //強化O
-        Pp, //強化P
-        Block, //通常
-        Player,
-        Pillar
-    }
-    public enum EventType
-    {
-        PLMove,
-        PLConnect,
-        PLDisConnect,
-        WallMove,
-        LOOPDetect,
-    }
+        }
 
-    public interface IEvent
-    {
-        public EventType Type { get; }
-    }
 
+
+        public enum Direction
+        {
+            North,
+            South,
+            East,
+            West,
+            Up,
+            Down
+        }
+
+        public enum EventType
+        {
+            PLMove,
+            PLConnect,
+            PLDisConnect,
+            WallMove,
+            LOOPDetect,
+        }
+
+        public interface IEvent
+        {
+            public EventType Type { get; }
+        }
+
+
+    }
 }
