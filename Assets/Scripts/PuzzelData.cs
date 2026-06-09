@@ -9,7 +9,21 @@ namespace Puzzle
         Turn loopTurn;
         public Turn LoopTurn => loopTurn;
         public bool IsLoop => loopTurn != Turn.None;
-        public int Surface => loopTurn == Turn.None ? 0 : (int)((L.p-O1.p).norm*(O2.p-O1.p).norm/2); //ループの面積。ループでない場合は0
+        
+        public int Surface
+        {
+            get
+            {
+                if (loopTurn == Turn.None) return 0;
+                
+                // 距離の二乗を使って面積を計算（長方形の面積 = 縦の長さ × 横の長さ）
+                // PuzzelDataでは座標系が違うかもしれないが、辺の長さを掛ける
+                float norm1 = (O1.p - L.p).norm;
+                float norm2 = (O2.p - O1.p).norm;
+                return (int)(norm1 * norm2);
+            }
+        }
+        
         public enum Turn
         {
             None,
@@ -30,7 +44,7 @@ namespace Puzzle
         public (Point p, Component c) O2 => loop[2];
         public (Point p, Component c) P => loop[3];
 
-        
+
 
         public LoopSquare((Point, Component) p1, (Point, Component) p2, (Point, Component) p3, (Point, Component) p4)
         {
@@ -74,7 +88,6 @@ namespace Puzzle
                     loop = new (Point, Component)[] { rightTurnAllay[L], rightTurnAllay[O1], rightTurnAllay[O2], rightTurnAllay[P] };
                 }
             }
-
             loop = sorted;
         }
     }
@@ -157,12 +170,79 @@ namespace Puzzle
         {
             return a.X > b.X || (a.X == b.X && a.Y > b.Y);
         }
-
+        public override bool Equals(object obj)
+        {
+            if (!(obj is Point)) return false;
+            Point p = (Point)obj;
+            return X == p.X && Y == p.Y;
+        }
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(X, Y);
+        }
     }
 
     public struct Tag
     {
-        //タグの抽象化
+        public int First { get; }
+        public int Second { get; }
+        public int Third { get; }
+        public Tag(int first, int second, int third = -1)
+        {
+            First = first;
+            Second = second;
+            Third = third;
+        }
+        public static bool operator ==(Tag a, Tag b)
+        {
+            return a.First == b.First && a.Second == b.Second && a.Third == b.Third;
+        }
+        public static bool operator !=(Tag a, Tag b)
+        {
+            return !(a == b);
+        }
+        public override bool Equals(object obj)
+        {
+            if (!(obj is Tag)) return false;
+            Tag t = (Tag)obj;
+            return this == t;
+        }
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(First, Second, Third);
+        }
+        public static bool operator <(Tag a, Tag b)
+        {
+            return a.First < b.First || (a.First == b.First && (a.Second < b.Second || (a.Second == b.Second && a.Third < b.Third)));
+        }
+        public static bool operator >(Tag a, Tag b)
+        {
+            return a.First > b.First || (a.First == b.First && (a.Second > b.Second || (a.Second == b.Second && a.Third > b.Third)));
+        }
+        public static bool operator <=(Tag a, Tag b)
+        {
+            return a < b || a == b;
+        }
+        public static bool operator >=(Tag a, Tag b)
+        {
+            return a > b || a == b;
+        }
+
+        public struct TagSquare
+        {
+            public Tag TL { get; }
+            public Tag TO1 { get; }
+            public Tag TO2 { get; }
+            public Tag TP { get; }
+            public TagSquare(Tag tl, Tag to1, Tag to2, Tag tp)
+            {
+                TL = tl;
+                TO1 = to1;
+                TO2 = to2;
+                TP = tp;
+            }
+
+        }
     }
 
 
@@ -170,29 +250,29 @@ namespace Puzzle
     public class TaggedGrid<T>
     {
         int gridSize;
-        (int, int) tagNum;
+        (int, int) tagNum; //縦のタグの個数×横のタグの個数
         T[,] grid; //全体のグリッド
-        List<(int, int)>[,] tagGrid; //座標ごとのタグを管理するグリッド
-        Func<(int, int), List<Point>> TagFunc; //タグからPointを生成する関数
-        public TaggedGrid(int gridSize, (int, int) tagNum, Func<(int, int), List<Point>> TagFunc)
+        List<Tag>[,] tagGrid; //座標ごとのタグを管理するグリッド。List<Tag>にできる
+        Func<Tag, List<Point>> TagFunc; //タグからPointを生成する関数。Func<Tag>にできる。
+        public TaggedGrid(int gridSize, (int, int) tagNum, Func<Tag, List<Point>> TagFunc)
         {
             this.gridSize = gridSize;
             this.tagNum = tagNum;
             grid = new T[gridSize, gridSize];
-            tagGrid = new List<(int, int)>[gridSize, gridSize];
+            tagGrid = new List<Tag>[gridSize, gridSize];
             this.TagFunc = TagFunc;
             for (int i = 0; i < tagNum.Item1; i++)
             {
                 for (int j = 0; j < tagNum.Item2; j++)
                 {
-                    var points = TagFunc((i, j));
+                    var points = TagFunc(new Tag(i, j));
                     foreach (var p in points)
                     {
                         if (p.X >= 0 && p.X < gridSize && p.Y >= 0 && p.Y < gridSize)
                         {
                             if (tagGrid[p.X, p.Y] == null)
-                                tagGrid[p.X, p.Y] = new List<(int, int)>();
-                            tagGrid[p.X, p.Y].Add((i, j));
+                                tagGrid[p.X, p.Y] = new List<Tag>();
+                            tagGrid[p.X, p.Y].Add(new Tag(i, j));
                         }
                     }
                 }
@@ -225,21 +305,21 @@ namespace Puzzle
             Exchange(p1.X, p1.Y, p2.X, p2.Y);
         }
 
-        public List<(int, int)> GetTag(int x, int y)
+        public List<Tag> GetTag(int x, int y)
         {
             return tagGrid[x, y];
         }
-        public List<(int, int)> GetTag(Point p)
+        public List<Tag> GetTag(Point p)
         {
             return GetTag(p.X, p.Y);
         }
-        public (int, int) GetPrimaryTag(Point p)
+        public Tag GetPrimaryTag(Point p)
         {
             var tags = GetTag(p.X, p.Y);
-            return tags.Count > 0 ? tags[0] : (-1, -1); //タグがない場合は(-1, -1)を返す
+            return tags.Count > 0 ? tags[0] : new Tag(-1, -1); //タグがない場合は(-1, -1)を返す
         }
 
-        public HashSet<(Point, T)> GetPointsByTag((int, int) tag)
+        public HashSet<(Point, T)> GetPointsByTag(Tag tag)
         {
             var points = TagFunc(tag);
             HashSet<(Point, T)> result = new HashSet<(Point, T)>();
@@ -251,6 +331,15 @@ namespace Puzzle
                 }
             }
             return result;
+        }
+
+        public int TagArea(LoopSquare loopSquare)
+        {
+            Tag tag1 = GetPrimaryTag(loopSquare.L.p);
+            Tag tag2 = GetPrimaryTag(loopSquare.O1.p);
+            Tag tag3 = GetPrimaryTag(loopSquare.O2.p);
+            Tag tag4 = GetPrimaryTag(loopSquare.P.p);
+            return Utility.Surface((tag1.First, tag1.Second), (tag2.First, tag2.Second), (tag3.First, tag3.Second), (tag4.First, tag4.Second));
         }
 
     }
@@ -265,22 +354,24 @@ namespace Puzzle
         public int Size { get => size; }
         public int SmallSize { get => smallSize; }
         public TaggedGrid<Component> Components { get => components; }
-        public WholeBoardData(int size, int smallSize)
+        public WholeBoardData(int size, int smallSize, Point initialPlayerPosition)
         {
             this.size = size;
             this.smallSize = smallSize;
+            this.playerPosition = initialPlayerPosition;
             components = new TaggedGrid<Component>(size, (smallSize, smallSize), TagSolver);
+            loops = new HashSet<LoopSquare>();
         }
 
         readonly Direction[] directions = new Direction[] { Direction.North, Direction.South, Direction.East, Direction.West };
 
 
-        public List<Point> TagSolver((int, int) tag)
+        public List<Point> TagSolver(Tag tag)
         {
             List<Point> points = new List<Point>();
-            for (int i = 2 * smallSize * tag.Item1; i <= 2 * smallSize * (tag.Item1 + 1); i++)
+            for (int i = 2 * smallSize * tag.First; i <= 2 * smallSize * (tag.First + 1); i++)
             {
-                for (int j = 2 * smallSize * tag.Item2; j < 2 * smallSize * (tag.Item2 + 1); j++)
+                for (int j = 2 * smallSize * tag.Second; j < 2 * smallSize * (tag.Second + 1); j++)
                 {
                     points.Add(new Point(i, j));
                 }
@@ -399,23 +490,27 @@ namespace Puzzle
                         Point NextP = GetNextPoint(p, Direction.North);
                         components.Exchange(p, NextP);
                         components.Exchange(point, p);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.South))
                     {
                         Point p = GetNextPoint(point, Direction.South);
                         components.Exchange(point, p);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.East))
                     {
                         Point p = GetNextPoint(point, Direction.East);
                         Point NextP = GetNextPoint(p, Direction.North);
                         components.Exchange(p, NextP);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.West))
                     {
                         Point p = GetNextPoint(point, Direction.West);
                         Point NextP = GetNextPoint(p, Direction.North);
                         components.Exchange(p, NextP);
+                        playerPosition = p;
                     }
                     break;
                 case Direction.South:
@@ -425,23 +520,27 @@ namespace Puzzle
                         Point NextP = GetNextPoint(p, Direction.South);
                         components.Exchange(p, NextP);
                         components.Exchange(point, p);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.North))
                     {
                         Point p = GetNextPoint(point, Direction.North);
                         components.Exchange(p, point);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.East))
                     {
                         Point p = GetNextPoint(point, Direction.East);
                         Point NextP = GetNextPoint(p, Direction.South);
                         components.Exchange(p, NextP);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.West))
                     {
                         Point p = GetNextPoint(point, Direction.West);
                         Point NextP = GetNextPoint(p, Direction.South);
                         components.Exchange(p, NextP);
+                        playerPosition = p;
                     }
                     break;
                 case Direction.East:
@@ -451,23 +550,27 @@ namespace Puzzle
                         Point NextP = GetNextPoint(p, Direction.East);
                         components.Exchange(p, NextP);
                         components.Exchange(point, p);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.West))
                     {
                         Point p = GetNextPoint(point, Direction.West);
                         components.Exchange(point, p);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.North))
                     {
                         Point p = GetNextPoint(point, Direction.North);
                         Point NextP = GetNextPoint(p, Direction.East);
                         components.Exchange(p, NextP);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.South))
                     {
                         Point p = GetNextPoint(point, Direction.South);
                         Point NextP = GetNextPoint(p, Direction.East);
                         components.Exchange(p, NextP);
+                        playerPosition = p;
                     }
                     break;
                 case Direction.West:
@@ -477,23 +580,27 @@ namespace Puzzle
                         Point NextP = GetNextPoint(p, Direction.West);
                         components.Exchange(p, NextP);
                         components.Exchange(point, p);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.East))
                     {
                         Point p = GetNextPoint(point, Direction.East);
                         components.Exchange(point, p);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.North))
                     {
                         Point p = GetNextPoint(point, Direction.North);
                         Point NextP = GetNextPoint(p, Direction.West);
                         components.Exchange(p, NextP);
+                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.South))
                     {
                         Point p = GetNextPoint(point, Direction.South);
                         Point NextP = GetNextPoint(p, Direction.West);
                         components.Exchange(p, NextP);
+                        playerPosition = p;
                     }
                     break;
                 default:
@@ -549,9 +656,9 @@ namespace Puzzle
 
         void LoopProcess()
         {
-            HashSet<(Point p, Component c, (int, int) tag)> L = new HashSet<(Point p, Component c, (int, int) tag)>();
-            HashSet<(Point p, Component c, (int, int) tag)> O = new HashSet<(Point p, Component c, (int, int) tag)>();
-            HashSet<(Point p, Component c, (int, int) tag)> P = new HashSet<(Point p, Component c, (int, int) tag)>();
+            HashSet<(Point p, Component c, Tag tag)> L = new HashSet<(Point p, Component c, Tag tag)>();
+            HashSet<(Point p, Component c, Tag tag)> O = new HashSet<(Point p, Component c, Tag tag)>();
+            HashSet<(Point p, Component c, Tag tag)> P = new HashSet<(Point p, Component c, Tag tag)>();
 
             for (int x = 0; x < size; x++)
             {
@@ -610,20 +717,181 @@ namespace Puzzle
                         }
                     }
                 }
+                else if (l.c == Component.Lp)
+                {
+                    var Os = O.Where(o => o.c == Component.Op);
+                    var Ps = P.Where(p => p.c == Component.Pp && (p.p.X == l.p.X || p.p.Y == l.p.Y)); //LとPは同じ行か列にある必要がある
+                    var Tuples = from o1 in Os from o2 in Os from p in Ps where o1.p < o2.p select (o1, o2, p);
+                    foreach (var t in Tuples)
+                    {
+                        LoopSquare loopSquare = new LoopSquare((l.p, l.c), (t.o1.p, t.o1.c), (t.o2.p, t.o2.c), (t.p.p, t.p.c));
+                        if (loopSquare.IsLoop)
+                        {
+                            if (loops.Contains(loopSquare))
+                            {
+                                //どうしようね
+                            }
+                            else
+                            {
+                                if (loopSquare.LoopTurn == LoopSquare.Turn.Right)
+                                {
+                                    newRloops.Add(loopSquare);
+                                }
+                                else if (loopSquare.LoopTurn == LoopSquare.Turn.Left)
+                                {
+                                    newLloops.Add(loopSquare);
+                                }
+                                loops.Add(loopSquare);
+                            }
+                        }
+                    }
+                }
+                var list = newRloops.ToList();
+                list.AddRange(newLloops.ToList());
+                list = list.OrderBy(l => components.TagArea(l)).ThenBy(a => a.Surface).ThenBy(l => l.L.p).ToList(); //面積⇒タグ面積⇒Lの位置で全順序
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var loop = list[i];
+                    var Ltag = components.GetTag(loop.L.p)[0];
+                    var O1tag = components.GetTag(loop.O1.p)[0];
+                    var O2tag = components.GetTag(loop.O2.p)[0];
+                    var Ptag = components.GetTag(loop.P.p)[0];
+
+                    int minTagX = Math.Min(Math.Min(Ltag.First, O1tag.First), Math.Min(O2tag.First, Ptag.First));
+                    int maxTagX = Math.Max(Math.Max(Ltag.First, O1tag.First), Math.Max(O2tag.First, Ptag.First));
+                    int minTagY = Math.Min(Math.Min(Ltag.Second, O1tag.Second), Math.Min(O2tag.Second, Ptag.Second));
+                    int maxTagY = Math.Max(Math.Max(Ltag.Second, O1tag.Second), Math.Max(O2tag.Second, Ptag.Second));
+
+                    var upWalls = new List<(Point, Component)>();
+                    var downWalls = new List<(Point, Component)>();
+                    var rightWalls = new List<(Point, Component)>();
+                    var leftWalls = new List<(Point, Component)>();
+
+                    for (int x = minTagX * 2 * smallSize; x <= maxTagX * 2 * smallSize; x++)
+                    {
+                        if (components.Get(new Point(x, (maxTagY + 1) * 2 * smallSize)) == Component.Wall)
+                        {
+                            upWalls.Add((new Point(x, (maxTagY + 1) * 2 * smallSize), components.Get(new Point(x, (maxTagY + 1) * 2 * smallSize))));
+                        }
+                        if (components.Get(new Point(x, minTagY * 2 * smallSize)) == Component.Wall)
+                        {
+                            downWalls.Add((new Point(x, minTagY * 2 * smallSize), components.Get(new Point(x, minTagY * 2 * smallSize))));
+                        }
+                    }
+                    for (int y = minTagY * 2 * smallSize; y <= (maxTagY + 1) * 2 * smallSize; y++)
+                    {
+                        if (components.Get(new Point((maxTagX + 1) * 2 * smallSize, y)) == Component.Wall)
+                        {
+                            rightWalls.Add((new Point((maxTagX + 1) * 2 * smallSize, y), components.Get(new Point((maxTagX + 1) * 2 * smallSize, y))));
+                        }
+                        if (components.Get(new Point(minTagX * 2 * smallSize, y)) == Component.Wall)
+                        {
+                            leftWalls.Add((new Point(minTagX * 2 * smallSize, y), components.Get(new Point(minTagX * 2 * smallSize, y))));
+                        }
+                    }
+                    if (loop.LoopTurn == LoopSquare.Turn.Right)
+                    {
+                        var deltaUp = (maxTagX + 1) * 2 * smallSize - loop.MaxX - 1;
+                        var deltaDown = minTagX * 2 * smallSize - loop.MinX + 1;
+                        var deltaRight = minTagY * 2 * smallSize - loop.MinY + 1;
+                        var deltaLeft = (maxTagY + 1) * 2 * smallSize - loop.MaxY - 1;
+                        upWalls = upWalls.OrderByDescending(w => w.Item1.X).ToList();
+                        downWalls = downWalls.OrderBy(w => w.Item1.X).ToList();
+                        rightWalls = rightWalls.OrderByDescending(w => w.Item1.Y).ToList();
+                        leftWalls = leftWalls.OrderBy(w => w.Item1.Y).ToList();
+                        //upは左から右に置換
+                        //downは右から左に置換
+                        //rightは下から上に置換
+                        //leftは上から下に置換
+                        foreach (var w in upWalls)
+                        {
+                            var newX = w.Item1.X + deltaUp;
+                            var newY = w.Item1.Y;
+                            components.Exchange(w.Item1, new Point(newX, newY));
+                        }
+                        foreach (var w in downWalls)
+                        {
+                            var newX = w.Item1.X + deltaDown;
+                            var newY = w.Item1.Y;
+                            components.Exchange(w.Item1, new Point(newX, newY));
+                        }
+                        foreach (var w in rightWalls)
+                        {
+                            var newX = w.Item1.X;
+                            var newY = w.Item1.Y + deltaRight;
+                            components.Exchange(w.Item1, new Point(newX, newY));
+                        }
+                        foreach (var w in leftWalls)
+                        {
+                            var newX = w.Item1.X;
+                            var newY = w.Item1.Y + deltaLeft;
+                            components.Exchange(w.Item1, new Point(newX, newY));
+                        }
+
+
+
+                    }
+                    else if (loop.LoopTurn == LoopSquare.Turn.Left)
+                    {
+                        var deltaDown = (maxTagX + 1) * 2 * smallSize - loop.MaxX - 1;
+                        var deltaUp = minTagX * 2 * smallSize - loop.MinX + 1;
+                        var deltaLeft = minTagY * 2 * smallSize - loop.MinY + 1;
+                        var deltaRight = (maxTagY + 1) * 2 * smallSize - loop.MaxY - 1;
+                        //upは右から左に置換
+                        //downは左から右に置換
+                        //rightは上から下に置換
+                        //leftは下から上に置換
+                        foreach (var w in upWalls)
+                        {
+                            var newX = w.Item1.X + deltaUp;
+                            var newY = w.Item1.Y;
+                            components.Exchange(w.Item1, new Point(newX, newY));
+                        }
+                        foreach (var w in downWalls)
+                        {
+                            var newX = w.Item1.X + deltaDown;
+                            var newY = w.Item1.Y;
+                            components.Exchange(w.Item1, new Point(newX, newY));
+                        }
+                        foreach (var w in rightWalls)
+                        {
+                            var newX = w.Item1.X;
+                            var newY = w.Item1.Y + deltaRight;
+                            components.Exchange(w.Item1, new Point(newX, newY));
+                        }
+                        foreach (var w in leftWalls)
+                        {
+                            var newX = w.Item1.X;
+                            var newY = w.Item1.Y + deltaLeft;
+                            components.Exchange(w.Item1, new Point(newX, newY));
+                        }
+                    }
+                }
             }
-            var list = newRloops.ToList();
-            list.AddRange(newLloops.ToList());
-            list.OrderBy(a => a.Surface); //面積が小さい順に
-            
-
         }
 
-
-        void ProcessWallMove()
+        void Process(InputType input)
         {
-
+            if (input != InputType.Connect)
+            {
+                if (CanPLMove(playerPosition, (Direction)input))
+                {
+                    MovePL(playerPosition, (Direction)input);
+                }
+            }
+            else
+            {
+                if (IsConnecting())
+                {
+                    DisConnect();
+                    LoopProcess();
+                }
+                else
+                {
+                    Connect();
+                }
+            }
         }
-
 
 
         public enum Direction
@@ -643,6 +911,15 @@ namespace Puzzle
             PLDisConnect,
             WallMove,
             LOOPDetect,
+        }
+
+        public enum InputType
+        {
+            Up,
+            Down,
+            Right,
+            Left,
+            Connect
         }
 
         public interface IEvent

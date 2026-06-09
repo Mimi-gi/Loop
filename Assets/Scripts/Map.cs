@@ -6,7 +6,7 @@ using Puzzle;
 public class Map : ScriptableObject
 {
     [SerializeField]
-    private int miniGridSize = 4;
+    public int miniGridSize = 4;
     [SerializeField] private int gridNum = 3;
     public int EffectiveGridSize => miniGridSize*gridNum;
     public int GridSize => EffectiveGridSize * 2 + 1;
