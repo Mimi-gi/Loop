@@ -56,23 +56,23 @@ public class MapMaker : Editor
             for (int x = 0; x < map.GridSize; x++)
             {
                 Puzzle.Component currentComponent = mapData[y * map.GridSize + x];
-                GUI.backgroundColor = currentComponent switch
+                GUI.backgroundColor = currentComponent.Type switch
                 {
-                    Puzzle.Component.Empty => Color.white,
-                    Puzzle.Component.Wall => new Color(0f, 8.6f, 10.0f),
-                    Puzzle.Component.Block => new Color(2f, 2f, 0.1f),
-                    Puzzle.Component.L => new Color(0.2f, 0.3f, 1f),
-                    Puzzle.Component.O => new Color(0.2f, 0.3f, 1f),
-                    Puzzle.Component.P => new Color(0.2f, 0.3f, 1f),
-                    Puzzle.Component.Lp => new Color(1f, 0.2f, 1f),
-                    Puzzle.Component.Op => new Color(1f, 0.2f, 1f),
-                    Puzzle.Component.Pp => new Color(1f, 0.2f, 1f),
-                    Puzzle.Component.Player => new Color(2f, 2f, 2f),
-                    Puzzle.Component.Pillar => new Color(1f, 0.2f, 0.0f),
-                    Puzzle.Component.InitialPos => new Color(10f, 10f, 10f),
+                    Puzzle.PuzzleComponent.Empty => Color.white,
+                    Puzzle.PuzzleComponent.Wall => new Color(0f, 8.6f, 10.0f),
+                    Puzzle.PuzzleComponent.Block => new Color(2f, 2f, 0.1f),
+                    Puzzle.PuzzleComponent.L => new Color(0.2f, 0.3f, 1f),
+                    Puzzle.PuzzleComponent.O => new Color(0.2f, 0.3f, 1f),
+                    Puzzle.PuzzleComponent.P => new Color(0.2f, 0.3f, 1f),
+                    Puzzle.PuzzleComponent.Lp => new Color(1f, 0.2f, 1f),
+                    Puzzle.PuzzleComponent.Op => new Color(1f, 0.2f, 1f),
+                    Puzzle.PuzzleComponent.Pp => new Color(1f, 0.2f, 1f),
+                    Puzzle.PuzzleComponent.Player => new Color(2f, 2f, 2f),
+                    Puzzle.PuzzleComponent.Pillar => new Color(1f, 0.2f, 0.0f),
+                    Puzzle.PuzzleComponent.InitialPos => new Color(10f, 10f, 10f),
                     _ => Color.white,
                 };
-                if (currentComponent != Puzzle.Component.Wall)
+                if (currentComponent.Type != Puzzle.PuzzleComponent.Wall)
                 {
                     if (x % 2 == 0 || y % 2 == 0)
                     {
@@ -88,14 +88,19 @@ public class MapMaker : Editor
                     GUI.backgroundColor = Color.black;
                 }
                 int index = y * map.GridSize + x;
-                // EditorGUILayout.EnumPopup で直接Enumのドロップダウンを表示
-                mapData[index] = (Puzzle.Component)EditorGUILayout.EnumPopup(mapData[index], GUILayout.Width(20), GUILayout.Height(20));
+                var selectedType = (Puzzle.PuzzleComponent)EditorGUILayout.EnumPopup(mapData[index].Type, GUILayout.Width(20), GUILayout.Height(20));
+
+                // 追加: 種類が変更された場合のみ、新しいインスタンス（新しいID）で上書きする
+                if (selectedType != mapData[index].Type)
+                {
+                    mapData[index] = new Puzzle.Component(selectedType);
+                }
                 Rect popupRect = GUILayoutUtility.GetLastRect();
-                if (popupRect.Contains(Event.current.mousePosition) &&(x%2) == 1 && (y%2) == 1)
+                if (popupRect.Contains(Event.current.mousePosition) && (x % 2) == 1 && (y % 2) == 1)
                 {
                     // クリックされたセルの座標を計算
-                    int clickedX = (x+1)/2-1;
-                    int clickedY = map.EffectiveGridSize-((y+1)/2-1);
+                    int clickedX = (x + 1) / 2 - 1;
+                    int clickedY = map.EffectiveGridSize - ((y + 1) / 2 - 1);
                     GUI.Label(new Rect(popupRect.x, popupRect.y - 20, 100, 20), $"({clickedX}, {clickedY})");
                 }
             }

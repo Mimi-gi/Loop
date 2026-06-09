@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using UnityEngine;
 
 namespace Puzzle
 {
-    public struct LoopSquare //タグまでは判定しない
+    public struct LoopSquare : IEquatable<LoopSquare>
     {
         Turn loopTurn;
         public Turn LoopTurn => loopTurn;
@@ -49,9 +50,9 @@ namespace Puzzle
         public LoopSquare((Point, Component) p1, (Point, Component) p2, (Point, Component) p3, (Point, Component) p4)
         {
             loopTurn = Turn.None;
-            bool isL(Component c) => c == Component.L || c == Component.Lp;
-            bool isO(Component c) => c == Component.O || c == Component.Op;
-            bool isP(Component c) => c == Component.P || c == Component.Pp;
+            bool isL(Component c) => c.Type == PuzzleComponent.L || c.Type == PuzzleComponent.Lp;
+            bool isO(Component c) => c.Type == PuzzleComponent.O || c.Type == PuzzleComponent.Op;
+            bool isP(Component c) => c.Type == PuzzleComponent.P || c.Type == PuzzleComponent.Pp;
 
             (Point, Component)[] sorted = new (Point, Component)[] { p1, p2, p3, p4 }.OrderBy(p => p.Item1.X).ThenBy(p => p.Item1.Y).ToArray();
             Point[] points = sorted.Select(p => p.Item1).Distinct().ToArray();
@@ -90,7 +91,24 @@ namespace Puzzle
             }
             loop = sorted;
         }
+
+        public bool Equals(LoopSquare other)
+        {
+            if (!IsLoop || !other.IsLoop) return false;
+            // 構成する4つのコンポーネントのIDが全て一致していれば同じLOOPとみなす
+            return this.L.c.ID == other.L.c.ID &&
+                   this.O1.c.ID == other.O1.c.ID &&
+                   this.O2.c.ID == other.O2.c.ID &&
+                   this.P.c.ID == other.P.c.ID;
+        }
+        public override bool Equals(object obj) => obj is LoopSquare other && Equals(other);
+        public override int GetHashCode()
+        {
+            if (!IsLoop) return 0;
+            return HashCode.Combine(L.c.ID, O1.c.ID, O2.c.ID, P.c.ID);
+        }
     }
+
     public class SMTPoints
     {
 
@@ -109,7 +127,37 @@ namespace Puzzle
         }
         public Point Value => new Point(xTracker.Value, yTracker.Value);
     }
-    public enum Component
+
+    [Serializable]
+    public class Component
+    {
+        private static int _nextId = 0;
+
+        // 変数名をアンダースコア付きにして明確に分ける
+        [SerializeField] private int _id;
+        public int ID => _id; // シリアライズされた変数を返すだけにする
+
+        [SerializeField] private PuzzleComponent _type;
+        public PuzzleComponent Type => _type;
+
+        public Component(PuzzleComponent type)
+        {
+            // 実際の変数に代入する
+            _id = _nextId++;
+            _type = type;
+        }
+
+        public Component(int id, PuzzleComponent type)
+        {
+            _id = id;
+            _type = type;
+            if (id >= _nextId)
+            {
+                _nextId = id + 1;
+            }
+        }
+    }
+    public enum PuzzleComponent
     {
         Empty,
         Wall, //壁
@@ -445,15 +493,15 @@ namespace Puzzle
         bool IsConnectable(Point p)
         {
             Component c = components.Get(p);
-            switch (c)
+            switch (c.Type)
             {
-                case Component.Block:
-                case Component.L:
-                case Component.O:
-                case Component.P:
-                case Component.Lp:
-                case Component.Op:
-                case Component.Pp:
+                case PuzzleComponent.Block:
+                case PuzzleComponent.L:
+                case PuzzleComponent.O:
+                case PuzzleComponent.P:
+                case PuzzleComponent.Lp:
+                case PuzzleComponent.Op:
+                case PuzzleComponent.Pp:
                     return true; //仮実装
                 default:
                     return false;
@@ -472,7 +520,7 @@ namespace Puzzle
 
         public bool CanPLMove(Point point, Direction dir)
         {
-            if (GetNextComponent(point, dir) != Component.Empty || GetNextWall(point, dir) != Component.Empty)
+            if (GetNextComponent(point, dir).Type != PuzzleComponent.Empty || GetNextWall(point, dir).Type != PuzzleComponent.Empty)
             {
                 return false;
             }
@@ -483,7 +531,7 @@ namespace Puzzle
                 Point NextP = GetNextPoint(p, dir);
                 var preTag = components.GetTag(p);
                 var nextTag = components.GetTag(NextP);
-                if (GetNextComponent(p, dir) != Component.Empty || GetNextWall(p, dir) != Component.Empty || preTag.Count != 1 || nextTag.Count != 1 || preTag[0] != nextTag[0]) //タグの重複は無し。
+                if (GetNextComponent(p, dir).Type != PuzzleComponent.Empty || GetNextWall(p, dir).Type != PuzzleComponent.Empty || preTag.Count != 1 || nextTag.Count != 1 || preTag[0] != nextTag[0]) //タグの重複は無し。
                 {
                     return false;
                 }
@@ -502,28 +550,25 @@ namespace Puzzle
                         Point NextP = GetNextPoint(p, Direction.North);
                         components.Exchange(p, NextP);
                         components.Exchange(point, p);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.South))
                     {
                         Point p = GetNextPoint(point, Direction.South);
                         components.Exchange(point, p);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.East))
                     {
                         Point p = GetNextPoint(point, Direction.East);
                         Point NextP = GetNextPoint(p, Direction.North);
                         components.Exchange(p, NextP);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.West))
                     {
                         Point p = GetNextPoint(point, Direction.West);
                         Point NextP = GetNextPoint(p, Direction.North);
                         components.Exchange(p, NextP);
-                        playerPosition = p;
                     }
+                    playerPosition = GetNextPoint(point, dir);
                     break;
                 case Direction.South:
                     if (ConnectDirections().Contains(Direction.South))
@@ -532,28 +577,25 @@ namespace Puzzle
                         Point NextP = GetNextPoint(p, Direction.South);
                         components.Exchange(p, NextP);
                         components.Exchange(point, p);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.North))
                     {
                         Point p = GetNextPoint(point, Direction.North);
                         components.Exchange(p, point);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.East))
                     {
                         Point p = GetNextPoint(point, Direction.East);
                         Point NextP = GetNextPoint(p, Direction.South);
                         components.Exchange(p, NextP);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.West))
                     {
                         Point p = GetNextPoint(point, Direction.West);
                         Point NextP = GetNextPoint(p, Direction.South);
                         components.Exchange(p, NextP);
-                        playerPosition = p;
                     }
+                    playerPosition = GetNextPoint(point, dir);
                     break;
                 case Direction.East:
                     if (ConnectDirections().Contains(Direction.East))
@@ -562,28 +604,25 @@ namespace Puzzle
                         Point NextP = GetNextPoint(p, Direction.East);
                         components.Exchange(p, NextP);
                         components.Exchange(point, p);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.West))
                     {
                         Point p = GetNextPoint(point, Direction.West);
                         components.Exchange(point, p);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.North))
                     {
                         Point p = GetNextPoint(point, Direction.North);
                         Point NextP = GetNextPoint(p, Direction.East);
                         components.Exchange(p, NextP);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.South))
                     {
                         Point p = GetNextPoint(point, Direction.South);
                         Point NextP = GetNextPoint(p, Direction.East);
                         components.Exchange(p, NextP);
-                        playerPosition = p;
                     }
+                    playerPosition = GetNextPoint(point, dir);
                     break;
                 case Direction.West:
                     if (ConnectDirections().Contains(Direction.West))
@@ -592,28 +631,25 @@ namespace Puzzle
                         Point NextP = GetNextPoint(p, Direction.West);
                         components.Exchange(p, NextP);
                         components.Exchange(point, p);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.East))
                     {
                         Point p = GetNextPoint(point, Direction.East);
                         components.Exchange(point, p);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.North))
                     {
                         Point p = GetNextPoint(point, Direction.North);
                         Point NextP = GetNextPoint(p, Direction.West);
                         components.Exchange(p, NextP);
-                        playerPosition = p;
                     }
                     if (ConnectDirections().Contains(Direction.South))
                     {
                         Point p = GetNextPoint(point, Direction.South);
                         Point NextP = GetNextPoint(p, Direction.West);
                         components.Exchange(p, NextP);
-                        playerPosition = p;
                     }
+                    playerPosition = GetNextPoint(point, dir);
                     break;
                 default:
                     throw new ArgumentException("Invalid direction");
@@ -633,7 +669,7 @@ namespace Puzzle
                 Point wallP = GetNextWallPoint(playerPosition, d);
                 var tag = components.GetTag(playerPosition);
                 var tag2 = components.GetTag(p);
-                if (IsConnectable(p) && (tag[0] == tag2[0]) && components.Get(wallP) == Component.Empty) //接続可能なコンポーネントは仮実装
+                if (IsConnectable(p) && (tag[0] == tag2[0]) && components.Get(wallP).Type == PuzzleComponent.Empty) //接続可能なコンポーネントは仮実装
                 {
                     switch (d)
                     {
@@ -679,18 +715,18 @@ namespace Puzzle
                     var p = new Point(x, y);
                     var c = components.Get(p);
                     var tag = components.GetTag(p)[0];
-                    switch (c)
+                    switch (c.Type)
                     {
-                        case Component.L:
-                        case Component.Lp:
+                        case PuzzleComponent.L:
+                        case PuzzleComponent.Lp:
                             L.Add((p, c, tag));
                             break;
-                        case Component.O:
-                        case Component.Op:
+                        case PuzzleComponent.O:
+                        case PuzzleComponent.Op:
                             O.Add((p, c, tag));
                             break;
-                        case Component.P:
-                        case Component.Pp:
+                        case PuzzleComponent.P:
+                        case PuzzleComponent.Pp:
                             P.Add((p, c, tag));
                             break;
                     }
@@ -700,7 +736,7 @@ namespace Puzzle
             HashSet<LoopSquare> newLloops = new HashSet<LoopSquare>();
             foreach (var l in L)
             {
-                if (l.c == Component.L)
+                if (l.c.Type == PuzzleComponent.L)
                 {
                     var Os = O.Where(o => o.tag == l.tag);
                     var Ps = P.Where(p => (p.tag == l.tag) && (p.p.X == l.p.X || p.p.Y == l.p.Y)); //LとPは同じ行か列にある必要がある
@@ -729,10 +765,10 @@ namespace Puzzle
                         }
                     }
                 }
-                else if (l.c == Component.Lp)
+                else if (l.c.Type == PuzzleComponent.Lp)
                 {
-                    var Os = O.Where(o => o.c == Component.Op);
-                    var Ps = P.Where(p => p.c == Component.Pp && (p.p.X == l.p.X || p.p.Y == l.p.Y)); //LとPは同じ行か列にある必要がある
+                    var Os = O.Where(o => o.c.Type == PuzzleComponent.Op);
+                    var Ps = P.Where(p => p.c.Type == PuzzleComponent.Pp && (p.p.X == l.p.X || p.p.Y == l.p.Y)); //LとPは同じ行か列にある必要がある
                     var Tuples = from o1 in Os from o2 in Os from p in Ps where o1.p < o2.p select (o1, o2, p);
                     foreach (var t in Tuples)
                     {
@@ -781,22 +817,22 @@ namespace Puzzle
 
                     for (int x = minTagX * 2 * smallSize; x <= maxTagX * 2 * smallSize; x++)
                     {
-                        if (components.Get(new Point(x, (maxTagY + 1) * 2 * smallSize)) == Component.Wall)
+                        if (components.Get(new Point(x, (maxTagY + 1) * 2 * smallSize)).Type == PuzzleComponent.Wall)
                         {
                             upWalls.Add((new Point(x, (maxTagY + 1) * 2 * smallSize), components.Get(new Point(x, (maxTagY + 1) * 2 * smallSize))));
                         }
-                        if (components.Get(new Point(x, minTagY * 2 * smallSize)) == Component.Wall)
+                        if (components.Get(new Point(x, minTagY * 2 * smallSize)).Type == PuzzleComponent.Wall)
                         {
                             downWalls.Add((new Point(x, minTagY * 2 * smallSize), components.Get(new Point(x, minTagY * 2 * smallSize))));
                         }
                     }
                     for (int y = minTagY * 2 * smallSize; y <= (maxTagY + 1) * 2 * smallSize; y++)
                     {
-                        if (components.Get(new Point((maxTagX + 1) * 2 * smallSize, y)) == Component.Wall)
+                        if (components.Get(new Point((maxTagX + 1) * 2 * smallSize, y)).Type == PuzzleComponent.Wall)
                         {
                             rightWalls.Add((new Point((maxTagX + 1) * 2 * smallSize, y), components.Get(new Point((maxTagX + 1) * 2 * smallSize, y))));
                         }
-                        if (components.Get(new Point(minTagX * 2 * smallSize, y)) == Component.Wall)
+                        if (components.Get(new Point(minTagX * 2 * smallSize, y)).Type == PuzzleComponent.Wall)
                         {
                             leftWalls.Add((new Point(minTagX * 2 * smallSize, y), components.Get(new Point(minTagX * 2 * smallSize, y))));
                         }

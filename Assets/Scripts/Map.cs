@@ -40,7 +40,7 @@ public class Map : ScriptableObject
         {
             for (int j = 0; j < GridSize; j++)
             {
-                mapData[i, j] = Puzzle.Component.Empty;
+                mapData[i, j] = new Puzzle.Component(PuzzleComponent.Empty);
             }
         }
         serializedMapData = To1D();
@@ -59,7 +59,7 @@ public class Map : ScriptableObject
             for (int j = 0; j < GridSize; j++)
             {
                 mapData[i, j] = data[i * GridSize + j];
-                if (data[i * GridSize + j] == Puzzle.Component.InitialPos)
+                if (data[i * GridSize + j].Type == PuzzleComponent.InitialPos)
                 {
                     InitialPlayerPosition = new Point(i, j);
                 }

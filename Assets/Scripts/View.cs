@@ -34,23 +34,23 @@ public class View : MonoBehaviour
         {
             for (int j = 0; j < map.GridSize; j++)
             {
-                GameObject prefabToInstantiate = map.mapData[i, j] switch
+                GameObject prefabToInstantiate = map.mapData[i, j].Type switch
                 {
-                    Puzzle.Component.Block => blockPrefab,
-                    Puzzle.Component.Wall => wallPrefab,
-                    Puzzle.Component.Pillar => pillarPrefab,
-                    Puzzle.Component.L => LPrefab,
-                    Puzzle.Component.P => PPrefab,
-                    Puzzle.Component.O => OPrefab,
-                    Puzzle.Component.Lp => LpPrefab,
-                    Puzzle.Component.Pp => PpPrefab,
-                    Puzzle.Component.Op => OpPrefab,
-                    Puzzle.Component.InitialPos => playerPrefab,
+                    Puzzle.PuzzleComponent.Block => blockPrefab,
+                    Puzzle.PuzzleComponent.Wall => wallPrefab,
+                    Puzzle.PuzzleComponent.Pillar => pillarPrefab,
+                    Puzzle.PuzzleComponent.L => LPrefab,
+                    Puzzle.PuzzleComponent.P => PPrefab,
+                    Puzzle.PuzzleComponent.O => OPrefab,
+                    Puzzle.PuzzleComponent.Lp => LpPrefab,
+                    Puzzle.PuzzleComponent.Pp => PpPrefab,
+                    Puzzle.PuzzleComponent.Op => OpPrefab,
+                    Puzzle.PuzzleComponent.InitialPos => playerPrefab,
                     _ => null,
                 };
                 if(prefabToInstantiate == null) continue;
                 var obj = Instantiate(prefabToInstantiate, new Vector3(i, j, 0), Quaternion.identity);
-                if (map.mapData[i, j] == Puzzle.Component.InitialPos)
+                if (map.mapData[i, j].Type == Puzzle.PuzzleComponent.InitialPos)
                 {
                     playerObject = obj;
                 }
