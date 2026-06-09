@@ -1,7 +1,7 @@
 using UnityEngine;
 using Puzzle;
 
-public class View : MonoBehaviour
+public class Presenter : MonoBehaviour
 {
     [SerializeField] Map map;
     [SerializeField] GameObject playerPrefab;
