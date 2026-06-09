@@ -69,6 +69,7 @@ public class MapMaker : Editor
                     Puzzle.Component.Pp => new Color(1f, 0.2f, 1f),
                     Puzzle.Component.Player => new Color(2f, 2f, 2f),
                     Puzzle.Component.Pillar => new Color(1f, 0.2f, 0.0f),
+                    Puzzle.Component.InitialPos => new Color(10f, 10f, 10f),
                     _ => Color.white,
                 };
                 if (currentComponent != Puzzle.Component.Wall)

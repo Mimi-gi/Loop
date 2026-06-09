@@ -11,6 +11,7 @@ public class Map : ScriptableObject
     public int EffectiveGridSize => miniGridSize*gridNum;
     public int GridSize => EffectiveGridSize * 2 + 1;
     public int MiniGridSize => 2*miniGridSize;
+    public Point InitialPlayerPosition;
 
     [SerializeField, HideInInspector]
     Puzzle.Component[] serializedMapData;
@@ -58,6 +59,10 @@ public class Map : ScriptableObject
             for (int j = 0; j < GridSize; j++)
             {
                 mapData[i, j] = data[i * GridSize + j];
+                if (data[i * GridSize + j] == Puzzle.Component.InitialPos)
+                {
+                    InitialPlayerPosition = new Point(i, j);
+                }
             }
         }
         serializedMapData = To1D();

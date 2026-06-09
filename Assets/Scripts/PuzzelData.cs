@@ -9,13 +9,13 @@ namespace Puzzle
         Turn loopTurn;
         public Turn LoopTurn => loopTurn;
         public bool IsLoop => loopTurn != Turn.None;
-        
+
         public int Surface
         {
             get
             {
                 if (loopTurn == Turn.None) return 0;
-                
+
                 // 距離の二乗を使って面積を計算（長方形の面積 = 縦の長さ × 横の長さ）
                 // PuzzelDataでは座標系が違うかもしれないが、辺の長さを掛ける
                 float norm1 = (O1.p - L.p).norm;
@@ -23,7 +23,7 @@ namespace Puzzle
                 return (int)(norm1 * norm2);
             }
         }
-        
+
         public enum Turn
         {
             None,
@@ -121,7 +121,8 @@ namespace Puzzle
         Pp, //強化P
         Block, //通常
         Player,
-        Pillar
+        Pillar,
+        InitialPos
     }
     public struct Point
     {
@@ -278,6 +279,16 @@ namespace Puzzle
                 }
             }
         }
+        public void Build(T[,] data)
+        {
+            for (int i = 0; i < gridSize; i++)
+            {
+                for (int j = 0; j < gridSize; j++)
+                {
+                    grid[i, j] = data[i, j];
+                }
+            }
+        }
         public void Set(int x, int y, T value)
         {
             grid[x, y] = value;
@@ -354,13 +365,14 @@ namespace Puzzle
         public int Size { get => size; }
         public int SmallSize { get => smallSize; }
         public TaggedGrid<Component> Components { get => components; }
-        public WholeBoardData(int size, int smallSize, Point initialPlayerPosition)
+        public WholeBoardData(int size, int smallSize, Map map, Point initialPlayerPosition)
         {
             this.size = size;
             this.smallSize = smallSize;
-            this.playerPosition = initialPlayerPosition;
             components = new TaggedGrid<Component>(size, (smallSize, smallSize), TagSolver);
             loops = new HashSet<LoopSquare>();
+            this.playerPosition = initialPlayerPosition;
+            components.Build(map.mapData);
         }
 
         readonly Direction[] directions = new Direction[] { Direction.North, Direction.South, Direction.East, Direction.West };
