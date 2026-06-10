@@ -867,7 +867,7 @@ MonoBehaviour:
     _type: 0
   - _id: 17
     _type: 1
-  - _id: 86
+  - _id: 0
     _type: 11
   - _id: 0
     _type: 0
@@ -891,7 +891,7 @@ MonoBehaviour:
     _type: 8
   - _id: 0
     _type: 0
-  - _id: 0
+  - _id: 1
     _type: 0
   - _id: 0
     _type: 0

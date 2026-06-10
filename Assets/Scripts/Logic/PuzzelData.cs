@@ -366,6 +366,8 @@ namespace Puzzle
 
         public List<Tag> GetTag(int x, int y)
         {
+            Debug.Log($"Getting tags for ({x}, {y})");
+            Debug.Log($"{tagGrid.GetLength(0)} x {tagGrid.GetLength(1)}");
             return tagGrid[x, y];
         }
         public List<Tag> GetTag(Point p)
@@ -375,6 +377,7 @@ namespace Puzzle
         public Tag GetPrimaryTag(Point p)
         {
             var tags = GetTag(p.X, p.Y);
+            Debug.Log(tags.Count);
             return tags.Count > 0 ? tags[0] : new Tag(-1, -1); //タグがない場合は(-1, -1)を返す
         }
 
@@ -422,6 +425,10 @@ namespace Puzzle
             this.playerPosition = initialPlayerPosition;
             components.Build(map.mapData);
         }
+        public Tag GetPlayerTag()
+        {
+            return components.GetPrimaryTag(playerPosition);
+        }
 
         readonly Direction[] directions = new Direction[] { Direction.North, Direction.South, Direction.East, Direction.West };
 
@@ -431,7 +438,7 @@ namespace Puzzle
             List<Point> points = new List<Point>();
             for (int i = 2 * smallSize * tag.First; i <= 2 * smallSize * (tag.First + 1); i++)
             {
-                for (int j = 2 * smallSize * tag.Second; j < 2 * smallSize * (tag.Second + 1); j++)
+                for (int j = 2 * smallSize * tag.Second; j <= 2 * smallSize * (tag.Second + 1); j++)
                 {
                     points.Add(new Point(i, j));
                 }
@@ -941,40 +948,88 @@ namespace Puzzle
             }
         }
 
+    }
+    public enum Direction
+    {
+        North,
+        South,
+        East,
+        West,
+        Up,
+        Down
+    }
+    public enum EventType
+    {
+        PLMove,
+        PLConnect,
+        PLDisConnect,
+        LOOPDetect,
+        WallMove,
+    }
 
-        public enum Direction
+    public enum InputType
+    {
+        Up,
+        Down,
+        Right,
+        Left,
+        Connect
+    }
+
+    public interface IEvent
+    {
+        public EventType Type { get; }
+    }
+
+    public class PLMoveEvent : IEvent
+    {
+        public EventType Type => EventType.PLMove;
+        public Point From { get; }
+        public Point To { get; }
+        public (Component?, Component?, Component?, Component?) ConnectComponents { get; } //接続しているコンポーネントを管理。上、下、左、右の順番。
+        public PLMoveEvent(Point from, Point to, (Component?, Component?, Component?, Component?) connectComponents)
         {
-            North,
-            South,
-            East,
-            West,
-            Up,
-            Down
+            From = from;
+            To = to;
+            ConnectComponents = connectComponents;
         }
-
-        public enum EventType
+    }
+    public class PLConnectEvent : IEvent
+    {
+        public EventType Type => EventType.PLConnect;
+        public (bool, bool, bool, bool) ConnectDirections { get; }
+        public PLConnectEvent((bool, bool, bool, bool) connectDirections)
         {
-            PLMove,
-            PLConnect,
-            PLDisConnect,
-            WallMove,
-            LOOPDetect,
+            ConnectDirections = connectDirections;
         }
-
-        public enum InputType
+    }
+    public class PLDisConnectEvent : IEvent
+    {
+        public EventType Type => EventType.PLDisConnect;
+    }
+    public class LoopDetectEvent : IEvent
+    {
+        public EventType Type => EventType.LOOPDetect;
+        public LoopSquare LoopSquare { get; }
+        public LoopDetectEvent(LoopSquare loopSquare)
         {
-            Up,
-            Down,
-            Right,
-            Left,
-            Connect
+            LoopSquare = loopSquare;
         }
-
-        public interface IEvent
+    }
+    public class WallMoveEvent : IEvent //まとめて処理しよかな
+    {
+        public EventType Type => EventType.WallMove;
+        public List<Component> MoveWalls { get; }
+        public Direction MoveDirection { get; }
+        public int Delta { get; } //ループの中心座標。ル
+        public WallMoveEvent(List<Component> moveWalls, Direction moveDirection, int delta)
         {
-            public EventType Type { get; }
+            MoveWalls = moveWalls;
+            MoveDirection = moveDirection;
+            Delta = delta;
         }
-
 
     }
+
+
 }

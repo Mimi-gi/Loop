@@ -8,9 +8,9 @@ public class Map : ScriptableObject
     [SerializeField]
     public int miniGridSize = 4;
     [SerializeField] private int gridNum = 3;
-    public int EffectiveGridSize => miniGridSize*gridNum;
+    public int EffectiveGridSize => miniGridSize * gridNum;
     public int GridSize => EffectiveGridSize * 2 + 1;
-    public int MiniGridSize => 2*miniGridSize;
+    public int MiniGridSize => 2 * miniGridSize;
     public Point InitialPlayerPosition;
 
     [SerializeField, HideInInspector]
@@ -31,7 +31,7 @@ public class Map : ScriptableObject
         }
     }
 
-    public void ResetMapData(int miniGridSize=4, int gridNum=3)
+    public void ResetMapData(int miniGridSize = 4, int gridNum = 3)
     {
         this.miniGridSize = miniGridSize;
         this.gridNum = gridNum;
@@ -54,27 +54,35 @@ public class Map : ScriptableObject
             return;
         }
         mapData = new Puzzle.Component[GridSize, GridSize];
-        for (int i = 0; i < GridSize; i++)
+        for (int y = 0; y < GridSize; y++)
         {
-            for (int j = 0; j < GridSize; j++)
+            for (int x = 0; x < GridSize; x++)
             {
-                mapData[i, j] = data[i * GridSize + j];
-                if (data[i * GridSize + j].Type == PuzzleComponent.InitialPos)
+                int inspectorY = (GridSize - 1) - y;
+                int inspectorX = x;
+                int index = inspectorY * GridSize + inspectorX;
+                
+                mapData[x, y] = data[index];
+                
+                if (data[index].Type == PuzzleComponent.InitialPos)
                 {
-                    InitialPlayerPosition = new Point(i, j);
+                    InitialPlayerPosition = new Point(x, y);
                 }
             }
         }
+
         serializedMapData = To1D();
     }
     public Puzzle.Component[] To1D()
     {
         Puzzle.Component[] data = new Puzzle.Component[GridSize * GridSize];
-        for (int i = 0; i < GridSize; i++)
+        for (int inspectorY = 0; inspectorY < GridSize; inspectorY++)
         {
-            for (int j = 0; j < GridSize; j++)
+            for (int inspectorX = 0; inspectorX < GridSize; inspectorX++)
             {
-                data[i * GridSize + j] = mapData[i, j];
+                int y = (GridSize - 1) - inspectorY;
+                int x = inspectorX;
+                data[inspectorY * GridSize + inspectorX] = mapData[x, y];
             }
         }
         return data;

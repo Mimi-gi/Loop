@@ -1,11 +1,12 @@
 using UnityEngine;
 using Puzzle;
 
-public class Presenter : MonoBehaviour
+public class View : MonoBehaviour
 {
     [SerializeField] Map map;
     [SerializeField] GameObject playerPrefab;
-    [SerializeField] GameObject wallPrefab;
+    [SerializeField] GameObject heightWallPrefab;
+    [SerializeField] GameObject widthWallPrefab;
     [SerializeField] GameObject pillarPrefab;
     [SerializeField] GameObject LPrefab;
     [SerializeField] GameObject PPrefab;
@@ -22,22 +23,29 @@ public class Presenter : MonoBehaviour
     void Awake()
     {
         // Viewの初期化等に合わせてプレイヤーの初期位置を決定して渡す
-        wholeMapData = new WholeBoardData(map.EffectiveGridSize, map.miniGridSize, map,map.InitialPlayerPosition); // Pointは仮の値
-        BuildMap();
-        mainCamera.transform.SetParent(playerObject.transform);
-        mainCamera.transform.localPosition = new Vector3(0, 0, -10);
+        ViewUtility.GridSize = map.GridSize;
+        ViewUtility.MiniGridSize = map.miniGridSize;
+        wholeMapData = new WholeBoardData(map.GridSize, map.miniGridSize, map, map.InitialPlayerPosition); // Pointは仮の値
+        BuildMap(wholeMapData);
+        // カメラの位置を調整
+        mainCamera.transform.position = ViewUtility.TagToVector3(wholeMapData.GetPlayerTag()) + new Vector3(0, 0, -10);
     }
 
-    void BuildMap()
+    bool isHeight(int i, int j)
     {
-        for (int i = 0; i < map.GridSize; i++)
+        return i % 2 == 0 && j % 2 == 1;
+    }
+
+    void BuildMap(WholeBoardData wholeMapData)
+    {
+        for (int i = 0; i < wholeMapData.Size; i++)
         {
-            for (int j = 0; j < map.GridSize; j++)
+            for (int j = 0; j < wholeMapData.Size; j++)
             {
                 GameObject prefabToInstantiate = map.mapData[i, j].Type switch
                 {
                     Puzzle.PuzzleComponent.Block => blockPrefab,
-                    Puzzle.PuzzleComponent.Wall => wallPrefab,
+                    Puzzle.PuzzleComponent.Wall => isHeight(i, j) ? heightWallPrefab : widthWallPrefab,
                     Puzzle.PuzzleComponent.Pillar => pillarPrefab,
                     Puzzle.PuzzleComponent.L => LPrefab,
                     Puzzle.PuzzleComponent.P => PPrefab,
@@ -48,11 +56,12 @@ public class Presenter : MonoBehaviour
                     Puzzle.PuzzleComponent.InitialPos => playerPrefab,
                     _ => null,
                 };
-                if(prefabToInstantiate == null) continue;
-                var obj = Instantiate(prefabToInstantiate, new Vector3(i, j, 0), Quaternion.identity);
-                if (map.mapData[i, j].Type == Puzzle.PuzzleComponent.InitialPos)
+                if (prefabToInstantiate == null) continue;
+                var obj = Instantiate(prefabToInstantiate, ViewUtility.PointToVector3(new Point(i, j)), Quaternion.identity);
+                if (map.mapData[i, j].Type == PuzzleComponent.InitialPos)
                 {
                     playerObject = obj;
+                    Debug.Log($"Player initial position: ({i}, {j})");
                 }
             }
         }

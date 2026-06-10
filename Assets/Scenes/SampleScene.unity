@@ -150,7 +150,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::View
   map: {fileID: 11400000, guid: 3110c3890d1e02545bc301f4121e6582, type: 2}
   playerPrefab: {fileID: 868341021611798723, guid: ee05c7e3101a42548bc360905bd9272e, type: 3}
-  wallPrefab: {fileID: 2957236561484791421, guid: 7f4f3c7f1087edc42a019b64b15dd865, type: 3}
+  heightWallPrefab: {fileID: 2957236561484791421, guid: 7f4f3c7f1087edc42a019b64b15dd865, type: 3}
+  widthWallPrefab: {fileID: 2957236561484791421, guid: dafcfde2433013e4b808a79b9464cbea, type: 3}
   pillarPrefab: {fileID: 4360652697849503061, guid: 10144ff4d66cfa54fa912e5bdfdcf0e4, type: 3}
   LPrefab: {fileID: 3539624192452810618, guid: c82733ed3fcbf81439a2c184dcba19f0, type: 3}
   PPrefab: {fileID: 6846974890507511299, guid: a5eb577a620b58f4aa731630f947ec60, type: 3}
@@ -187,6 +188,7 @@ GameObject:
   - component: {fileID: 519420031}
   - component: {fileID: 519420029}
   - component: {fileID: 519420030}
+  - component: {fileID: 519420033}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -273,15 +275,15 @@ Camera:
   m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
-    x: 0
+    x: 0.001510574
     y: 0
-    width: 1
+    width: 0.9969789
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 34
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 2.90625
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -312,6 +314,30 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &519420033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 519420028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c88f5cead0c0b2a4eb05b5900433f8d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.2D.Runtime::UnityEngine.Rendering.Universal.PixelPerfectCamera
+  m_ComponentVersion: 1
+  m_AssetsPPU: 32
+  m_RefResolutionX: 128
+  m_RefResolutionY: 128
+  m_CropFrame: 0
+  m_GridSnapping: 2
+  m_FilterMode: 0
+  m_UpscaleRT: 0
+  m_PixelSnapping: 0
+  m_CropFrameX: 0
+  m_CropFrameY: 0
+  m_StretchFill: 0
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0

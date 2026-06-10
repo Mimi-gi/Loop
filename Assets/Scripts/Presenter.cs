@@ -1,12 +1,16 @@
 using Puzzle;
+using System.Collections.Generic;
+using UnityEngine;
+using static ViewUtility;
 
 
-
-public class PuzzlePresenter
+public class PuzzlePresenter : MonoBehaviour
 {
-    public PuzzlePresenter(WholeBoardData wholeMapData)
+    List<IEvent> events = new List<IEvent>();
+    WholeBoardData wholeMapData;
+    public PuzzlePresenter(Map map)
     {
-        // Viewの初期化等に合わせてプレイヤーの初期位置を決定して渡す
+        //this.wholeMapData = new WholeBoardData(map.EffectiveGridSize, map.miniGridSize, map, map.InitialPlayerPosition);
+        
     }
-    //ここにオブジェクトBuild()とかを描いた方が良いかも。
 }
