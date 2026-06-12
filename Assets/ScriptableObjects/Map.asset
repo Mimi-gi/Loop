@@ -867,11 +867,11 @@ MonoBehaviour:
     _type: 0
   - _id: 17
     _type: 1
-  - _id: 0
+  - _id: 3
     _type: 11
   - _id: 0
     _type: 0
-  - _id: 88
+  - _id: 1
     _type: 10
   - _id: 0
     _type: 0
@@ -883,7 +883,7 @@ MonoBehaviour:
     _type: 0
   - _id: 92
     _type: 1
-  - _id: 0
+  - _id: 2
     _type: 0
   - _id: 0
     _type: 0

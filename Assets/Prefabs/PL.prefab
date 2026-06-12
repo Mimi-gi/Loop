@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 6429567096644705537}
   - component: {fileID: 1784413709660628545}
   - component: {fileID: 2485111418068198737}
+  - component: {fileID: 4450304747117830989}
   m_Layer: 0
   m_Name: PL
   m_TagString: Untagged
@@ -106,7 +107,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_MaskInteraction: 0
   m_Sprite: {fileID: -2311659948842064771, guid: ca1ad9c445fce4b4ea18bcc684059a39, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -118,6 +119,55 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &4450304747117830989
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 868341021611798723}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09adf48cd401c9c40aabb165de9fcea5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerViewer
+  moveDuration: 0.1
+  ease: 0
+  _animator: {fileID: 1784413709660628545}
+  _animationClips:
+  - {fileID: 7400000, guid: e382434e470444a41bfc87f1f539dbfc, type: 2}
+  - {fileID: 7400000, guid: dcae8dbc56156af46a065452083c35cf, type: 2}
+  - {fileID: 7400000, guid: f4b08ddbe82913b41807977ad3b3f50b, type: 2}
+  - {fileID: 7400000, guid: daf5a7e12d569ca49927337130a143f1, type: 2}
+  - {fileID: 7400000, guid: a7676bbef99bec34fa8b61dfe42d1858, type: 2}
+  - {fileID: 7400000, guid: ebcd2b6072608a942b5f2b7317ddfaff, type: 2}
+  - {fileID: 7400000, guid: c74d4e4bb76f28d419e4b5196ede5345, type: 2}
+  - {fileID: 7400000, guid: 8470b87dcd14d354c9b2b397166b98c6, type: 2}
+  - {fileID: 7400000, guid: a428d69e54050884cb6dd36565450834, type: 2}
+  - {fileID: 7400000, guid: 92fee3c967ecf3743b8874657749c196, type: 2}
+  - {fileID: 7400000, guid: e9fe46d28be40cb448ed935160481d34, type: 2}
+  - {fileID: 7400000, guid: 9d1e9806d4014b04790332676cd57bcb, type: 2}
+  - {fileID: 7400000, guid: d55297deb3f9ba94a9bfa7eaa8e26f6b, type: 2}
+  - {fileID: 7400000, guid: e2757cc1fb25be04084deb374525e444, type: 2}
+  - {fileID: 7400000, guid: e5821d262335875409732d0c9442c2db, type: 2}
+  - {fileID: 7400000, guid: 77a29c037083639468823b039d3224c9, type: 2}
+  - {fileID: 7400000, guid: c7c011c1dbafb6345b8cbbe9312f62a2, type: 2}
+  _DisConnectClips:
+  - {fileID: 7400000, guid: b29b1e7ca058cd941a8017c06a1c0025, type: 2}
+  - {fileID: 7400000, guid: c0d85cb8d9b49984a81d484a56c0609f, type: 2}
+  - {fileID: 7400000, guid: 73848143cac15c04ea6c5134f3339794, type: 2}
+  - {fileID: 7400000, guid: bef4942064630cc41b38b7f2ac01982e, type: 2}
+  - {fileID: 7400000, guid: 5574fdfb28fd8af4ba61cf319d344ccb, type: 2}
+  - {fileID: 7400000, guid: 7169267738e8a864d9175bbd3f1eeb56, type: 2}
+  - {fileID: 7400000, guid: 750b02c435b46f64fa50aa1db21d3d13, type: 2}
+  - {fileID: 7400000, guid: 1f567c9812daa7748a3703dec5272a12, type: 2}
+  - {fileID: 7400000, guid: 424202c4acf757649b5c9058340f12e4, type: 2}
+  - {fileID: 7400000, guid: a07c62ba1eecfdc44b774db502bc3409, type: 2}
+  - {fileID: 7400000, guid: d61ea38c8c9f01247bf2c98af4624b4e, type: 2}
+  - {fileID: 7400000, guid: f32af453b1a86c44684a35b85719ccc5, type: 2}
+  - {fileID: 7400000, guid: 4bcbb5e7e492f234c911be54107cbcc9, type: 2}
+  - {fileID: 7400000, guid: 347f3e64ad14153458a905e047352bd0, type: 2}
+  - {fileID: 7400000, guid: 8e04da66da2b4b047ad7bd8a3c518657, type: 2}
 --- !u!1 &1397117805297970758
 GameObject:
   m_ObjectHideFlags: 0

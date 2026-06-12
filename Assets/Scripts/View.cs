@@ -19,6 +19,8 @@ public class View : MonoBehaviour
     [Header("カメラ")]
     [SerializeField] Camera mainCamera;
     WholeBoardData wholeMapData;
+    [Header("Presenter")]
+    [SerializeField] PuzzlePresenter presenter;
     GameObject playerObject;
     void Awake()
     {
@@ -26,9 +28,10 @@ public class View : MonoBehaviour
         ViewUtility.GridSize = map.GridSize;
         ViewUtility.MiniGridSize = map.miniGridSize;
         wholeMapData = new WholeBoardData(map.GridSize, map.miniGridSize, map, map.InitialPlayerPosition); // Pointは仮の値
+        presenter.WholeMapData = wholeMapData;
         BuildMap(wholeMapData);
         // カメラの位置を調整
-        mainCamera.transform.position = ViewUtility.TagToVector3(wholeMapData.GetPlayerTag()) + new Vector3(0, 0, -10);
+        presenter.SetCamera(mainCamera);
     }
 
     bool isHeight(int i, int j)
@@ -61,8 +64,10 @@ public class View : MonoBehaviour
                 if (map.mapData[i, j].Type == PuzzleComponent.InitialPos)
                 {
                     playerObject = obj;
+                    presenter.SetPlayerViewer(playerObject.GetComponent<PlayerViewer>());
                     Debug.Log($"Player initial position: ({i}, {j})");
                 }
+                presenter.componentToViewer[map.mapData[i, j]] = obj.GetComponent<IMovable>();
             }
         }
     }

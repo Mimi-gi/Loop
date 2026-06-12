@@ -45,6 +45,12 @@ namespace Puzzle
         public (Point p, Component c) O2 => loop[2];
         public (Point p, Component c) P => loop[3];
 
+        public override string ToString()
+        {
+            if (!IsLoop) return "Not a Loop";
+            return $"LoopSquare: L({L.p.X}, {L.p.Y}), O1({O1.p.X}, {O1.p.Y}), O2({O2.p.X}, {O2.p.Y}), P({P.p.X}, {P.p.Y}), Turn: {loopTurn}, Surface: {Surface}";
+        }
+
 
 
         public LoopSquare((Point, Component) p1, (Point, Component) p2, (Point, Component) p3, (Point, Component) p4)
@@ -62,9 +68,16 @@ namespace Puzzle
             if (points.Length != 4 || pointXs.Length != 2 || pointYs.Length != 2)
             {
                 loop = sorted;
+                return; // ★長方形でない場合は、Turn.Noneのまま終了する
             }
 
-            (Point, Component)[] rightTurnAllay = new (Point, Component)[] { sorted[0], sorted[1], sorted[3], sorted[2] }; //右上、右下、左上、左下
+            // OrderBy(X).ThenBy(Y) のため、以下のような順番になります。
+            // sorted[0]: 左下 (MinX, MinY)
+            // sorted[1]: 左上 (MinX, MaxY)
+            // sorted[2]: 右下 (MaxX, MinY)
+            // sorted[3]: 右上 (MaxX, MaxY)
+            // これらを時計回り(左下→左上→右上→右下)に並べ替えます。
+            (Point, Component)[] rightTurnAllay = new (Point, Component)[] { sorted[0], sorted[1], sorted[3], sorted[2] };
             for (int i = 0; i < 4; i++)
             {
                 var L = new ModInt(i, 4);
@@ -83,7 +96,10 @@ namespace Puzzle
                 var O1 = new ModInt(i - 1, 4);
                 var O2 = new ModInt(i - 2, 4);
                 var P = new ModInt(i - 3, 4);
-                if (isL(rightTurnAllay[L].Item2) && isO(rightTurnAllay[O1].Item2) && isO(rightTurnAllay[O2].Item2) && isP(rightTurnAllay[P].Item2))
+                if (isL(rightTurnAllay[L].Item2)
+                && isO(rightTurnAllay[O1].Item2)
+                && isO(rightTurnAllay[O2].Item2)
+                && isP(rightTurnAllay[P].Item2))
                 {
                     loopTurn = Turn.Left;
                     loop = new (Point, Component)[] { rightTurnAllay[L], rightTurnAllay[O1], rightTurnAllay[O2], rightTurnAllay[P] };
@@ -140,10 +156,12 @@ namespace Puzzle
         [SerializeField] private PuzzleComponent _type;
         public PuzzleComponent Type => _type;
 
-        public Component(PuzzleComponent type)
+        public Component(PuzzleComponent type, int _id = 0)
         {
-            // 実際の変数に代入する
-            _id = _nextId++;
+            if (_id != -1)
+            {
+                _id = _nextId++;
+            }
             _type = type;
         }
 
@@ -156,6 +174,8 @@ namespace Puzzle
                 _nextId = id + 1;
             }
         }
+
+        public static readonly Component Null = new Component(PuzzleComponent.Null, -1);
     }
     public enum PuzzleComponent
     {
@@ -170,13 +190,22 @@ namespace Puzzle
         Block, //通常
         Player,
         Pillar,
-        InitialPos
+        InitialPos,
+        Null
     }
-    public struct Point
+    public struct Point : IComparable<Point>
     {
         public int X { get; }
         public int Y { get; }
         public float norm => (float)Math.Sqrt(X * X + Y * Y);
+
+        public int CompareTo(Point other)
+        {
+            if (this.X != other.X)
+                return this.X.CompareTo(other.X);
+            return this.Y.CompareTo(other.Y);
+        }
+
         public Point(int x, int y)
         {
             X = x;
@@ -366,8 +395,6 @@ namespace Puzzle
 
         public List<Tag> GetTag(int x, int y)
         {
-            Debug.Log($"Getting tags for ({x}, {y})");
-            Debug.Log($"{tagGrid.GetLength(0)} x {tagGrid.GetLength(1)}");
             return tagGrid[x, y];
         }
         public List<Tag> GetTag(Point p)
@@ -377,7 +404,6 @@ namespace Puzzle
         public Tag GetPrimaryTag(Point p)
         {
             var tags = GetTag(p.X, p.Y);
-            Debug.Log(tags.Count);
             return tags.Count > 0 ? tags[0] : new Tag(-1, -1); //タグがない場合は(-1, -1)を返す
         }
 
@@ -411,7 +437,7 @@ namespace Puzzle
         int smallSize;
         TaggedGrid<Component> components;
         (bool, bool, bool, bool) isConnected; //上下左右のつながりを管理
-        Point playerPosition;
+        public Point playerPosition;
         HashSet<LoopSquare> loops; //ループの管理
         public int Size { get => size; }
         public int SmallSize { get => smallSize; }
@@ -455,7 +481,7 @@ namespace Puzzle
         {
             components.Exchange(p1, p2);
         }
-        Point GetNextPoint(Point point, Direction dir)
+        public Point GetNextPoint(Point point, Direction dir)
         {
             switch (dir)
             {
@@ -490,6 +516,10 @@ namespace Puzzle
         }
         Component GetNextComponent(Point point, Direction dir)
         {
+            if ((point.X == 1 && dir == Direction.West) || (point.X == size - 1 && dir == Direction.East) || (point.Y == 1 && dir == Direction.North) || (point.Y == size - 1 && dir == Direction.South))
+            {
+                return Component.Null; //盤面外は壁として扱う
+            }
             return components.Get(GetNextPoint(point, dir));
         }
         Component GetNextWall(Point point, Direction dir)
@@ -527,136 +557,211 @@ namespace Puzzle
 
         public bool CanPLMove(Point point, Direction dir)
         {
-            if (GetNextComponent(point, dir).Type != PuzzleComponent.Empty || GetNextWall(point, dir).Type != PuzzleComponent.Empty)
+            var connectedDirs = ConnectDirections();
+
+            // 今回同時に移動する座標のリスト（プレイヤー自身の座標 ＋ 接続されているブロックの座標）
+            List<Point> movingPoints = new List<Point>();
+            movingPoints.Add(point);
+            foreach (var d in connectedDirs)
             {
-                return false;
+                movingPoints.Add(GetNextPoint(point, d));
             }
 
-            foreach (var d in ConnectDirections())
+            // 各移動マスに対して、壁・移動先の状態・タグのルールをチェックする
+            foreach (var p in movingPoints)
             {
-                Point p = GetNextPoint(point, d);
-                Point NextP = GetNextPoint(p, dir);
-                var preTag = components.GetTag(p);
-                var nextTag = components.GetTag(NextP);
-                if (GetNextComponent(p, dir).Type != PuzzleComponent.Empty || GetNextWall(p, dir).Type != PuzzleComponent.Empty || preTag.Count != 1 || nextTag.Count != 1 || preTag[0] != nextTag[0]) //タグの重複は無し。
+                // 1. 進行方向の壁チェック
+                if (GetNextWall(p, dir).Type != PuzzleComponent.Empty)
                 {
                     return false;
                 }
+
+                // 2. 移動先のコンポーネント（空きマス）チェック
+                Point nextP = GetNextPoint(p, dir);
+                Component targetComp = GetNextComponent(p, dir); // 盤面外判定込み
+
+                // 盤面外の場合は移動不可
+                if (targetComp.Type == PuzzleComponent.Null)
+                {
+                    return false;
+                }
+
+                // 移動先が空マスではなく、かつ「今回一緒に動く仲間の現在地」でもない場合は移動不可
+                // （これにより、押す時や引く時に自分たちを障害物として誤判定しなくなります）
+                if (targetComp.Type != PuzzleComponent.Empty && !movingPoints.Contains(nextP))
+                {
+                    return false;
+                }
+
+                // 3. 接続ブロック特有の「タグ」重複チェック（プレイヤー自身は判定から除外）
+                if (p != point)
+                {
+                    Tag preTag = components.GetPrimaryTag(p);
+                    Tag nextTag = components.GetPrimaryTag(nextP);
+
+                    // タグが取得できない、または移動によってタグ（エリア）が変わってしまう場合は移動不可
+                    if (preTag.First == -1 || nextTag.First == -1 || preTag != nextTag)
+                    {
+                        return false;
+                    }
+                }
             }
+
             return true;
         }
 
-        public void MovePL(Point point, Direction dir)
+        public void MovePL(Point point, Direction dir, List<IEvent> events)
         {
+            (Component? up, Component? down, Component? left, Component? right) Components = (null, null, null, null); //上下左右
             switch (dir)
             {
                 case Direction.North:
                     if (ConnectDirections().Contains(Direction.North))
                     {
-                        Point p = GetNextPoint(point, Direction.North);
-                        Point NextP = GetNextPoint(p, Direction.North);
-                        components.Exchange(p, NextP);
-                        components.Exchange(point, p);
+                        Point northP = GetNextPoint(point, Direction.North);
+                        Point nextNorthP = GetNextPoint(northP, Direction.North);
+                        components.Exchange(northP, nextNorthP);
+                        Components.up = components.Get(nextNorthP);
                     }
+
+                    Point nextP = GetNextPoint(point, Direction.North);
+                    components.Exchange(point, nextP);
+
                     if (ConnectDirections().Contains(Direction.South))
                     {
-                        Point p = GetNextPoint(point, Direction.South);
-                        components.Exchange(point, p);
+                        Point southP = GetNextPoint(point, Direction.South);
+                        Point nextSouthP = GetNextPoint(southP, Direction.North);
+                        components.Exchange(southP, nextSouthP);
+                        Components.down = components.Get(nextSouthP);
                     }
                     if (ConnectDirections().Contains(Direction.East))
                     {
-                        Point p = GetNextPoint(point, Direction.East);
-                        Point NextP = GetNextPoint(p, Direction.North);
-                        components.Exchange(p, NextP);
+                        Point eastP = GetNextPoint(point, Direction.East);
+                        Point nextEastP = GetNextPoint(eastP, Direction.North);
+                        components.Exchange(eastP, nextEastP);
+                        Components.right = components.Get(nextEastP);
                     }
                     if (ConnectDirections().Contains(Direction.West))
                     {
-                        Point p = GetNextPoint(point, Direction.West);
-                        Point NextP = GetNextPoint(p, Direction.North);
-                        components.Exchange(p, NextP);
+                        Point westP = GetNextPoint(point, Direction.West);
+                        Point nextWestP = GetNextPoint(westP, Direction.North);
+                        components.Exchange(westP, nextWestP);
+                        Components.left = components.Get(nextWestP);
                     }
+
                     playerPosition = GetNextPoint(point, dir);
+                    events.Add(new PLMoveEvent(point, GetNextPoint(point, dir), Components));
                     break;
                 case Direction.South:
                     if (ConnectDirections().Contains(Direction.South))
                     {
-                        Point p = GetNextPoint(point, Direction.South);
-                        Point NextP = GetNextPoint(p, Direction.South);
-                        components.Exchange(p, NextP);
-                        components.Exchange(point, p);
+                        Point southP = GetNextPoint(point, Direction.South);
+                        Point nextSouthP = GetNextPoint(southP, Direction.South);
+                        components.Exchange(southP, nextSouthP);
+                        Components.down = components.Get(nextSouthP);
                     }
+
+                    nextP = GetNextPoint(point, Direction.South);
+                    components.Exchange(point, nextP);
+
                     if (ConnectDirections().Contains(Direction.North))
                     {
-                        Point p = GetNextPoint(point, Direction.North);
-                        components.Exchange(p, point);
+                        Point northP = GetNextPoint(point, Direction.North);
+                        Point nextNorthP = GetNextPoint(northP, Direction.South);
+                        components.Exchange(northP, nextNorthP);
+                        Components.up = components.Get(nextNorthP);
                     }
                     if (ConnectDirections().Contains(Direction.East))
                     {
-                        Point p = GetNextPoint(point, Direction.East);
-                        Point NextP = GetNextPoint(p, Direction.South);
-                        components.Exchange(p, NextP);
+                        Point eastP = GetNextPoint(point, Direction.East);
+                        Point nextEastP = GetNextPoint(eastP, Direction.South);
+                        components.Exchange(eastP, nextEastP);
+                        Components.right = components.Get(nextEastP);
                     }
                     if (ConnectDirections().Contains(Direction.West))
                     {
-                        Point p = GetNextPoint(point, Direction.West);
-                        Point NextP = GetNextPoint(p, Direction.South);
-                        components.Exchange(p, NextP);
+                        Point westP = GetNextPoint(point, Direction.West);
+                        Point nextWestP = GetNextPoint(westP, Direction.South);
+                        components.Exchange(westP, nextWestP);
+                        Components.left = components.Get(nextWestP);
                     }
+
                     playerPosition = GetNextPoint(point, dir);
+                    events.Add(new PLMoveEvent(point, GetNextPoint(point, dir), Components));
                     break;
                 case Direction.East:
                     if (ConnectDirections().Contains(Direction.East))
                     {
-                        Point p = GetNextPoint(point, Direction.East);
-                        Point NextP = GetNextPoint(p, Direction.East);
-                        components.Exchange(p, NextP);
-                        components.Exchange(point, p);
+                        Point eastP = GetNextPoint(point, Direction.East);
+                        Point nextEastP = GetNextPoint(eastP, Direction.East);
+                        components.Exchange(eastP, nextEastP);
+                        Components.right = components.Get(nextEastP);
                     }
-                    if (ConnectDirections().Contains(Direction.West))
-                    {
-                        Point p = GetNextPoint(point, Direction.West);
-                        components.Exchange(point, p);
-                    }
+
+                    nextP = GetNextPoint(point, Direction.East);
+                    components.Exchange(point, nextP);
+
                     if (ConnectDirections().Contains(Direction.North))
                     {
-                        Point p = GetNextPoint(point, Direction.North);
-                        Point NextP = GetNextPoint(p, Direction.East);
-                        components.Exchange(p, NextP);
+                        Point northP = GetNextPoint(point, Direction.North);
+                        Point nextNorthP = GetNextPoint(northP, Direction.East);
+                        components.Exchange(northP, nextNorthP);
+                        Components.up = components.Get(nextNorthP);
                     }
                     if (ConnectDirections().Contains(Direction.South))
                     {
-                        Point p = GetNextPoint(point, Direction.South);
-                        Point NextP = GetNextPoint(p, Direction.East);
-                        components.Exchange(p, NextP);
+                        Point southP = GetNextPoint(point, Direction.South);
+                        Point nextSouthP = GetNextPoint(southP, Direction.East);
+                        components.Exchange(southP, nextSouthP);
+                        Components.down = components.Get(nextSouthP);
                     }
+                    if (ConnectDirections().Contains(Direction.West))
+                    {
+                        Point westP = GetNextPoint(point, Direction.West);
+                        Point nextWestP = GetNextPoint(westP, Direction.East);
+                        components.Exchange(westP, nextWestP);
+                        Components.left = components.Get(nextWestP);
+                    }
+
                     playerPosition = GetNextPoint(point, dir);
+                    events.Add(new PLMoveEvent(point, playerPosition, Components));
                     break;
                 case Direction.West:
                     if (ConnectDirections().Contains(Direction.West))
                     {
-                        Point p = GetNextPoint(point, Direction.West);
-                        Point NextP = GetNextPoint(p, Direction.West);
-                        components.Exchange(p, NextP);
-                        components.Exchange(point, p);
+                        Point westP = GetNextPoint(point, Direction.West);
+                        Point nextWestP = GetNextPoint(westP, Direction.West);
+                        components.Exchange(westP, nextWestP);
+                        Components.left = components.Get(nextWestP);
                     }
-                    if (ConnectDirections().Contains(Direction.East))
-                    {
-                        Point p = GetNextPoint(point, Direction.East);
-                        components.Exchange(point, p);
-                    }
+
+                    nextP = GetNextPoint(point, Direction.West);
+                    components.Exchange(point, nextP);
+
                     if (ConnectDirections().Contains(Direction.North))
                     {
-                        Point p = GetNextPoint(point, Direction.North);
-                        Point NextP = GetNextPoint(p, Direction.West);
-                        components.Exchange(p, NextP);
+                        Point northP = GetNextPoint(point, Direction.North);
+                        Point nextNorthP = GetNextPoint(northP, Direction.West);
+                        components.Exchange(northP, nextNorthP);
+                        Components.up = components.Get(nextNorthP);
                     }
                     if (ConnectDirections().Contains(Direction.South))
                     {
-                        Point p = GetNextPoint(point, Direction.South);
-                        Point NextP = GetNextPoint(p, Direction.West);
-                        components.Exchange(p, NextP);
+                        Point southP = GetNextPoint(point, Direction.South);
+                        Point nextSouthP = GetNextPoint(southP, Direction.West);
+                        components.Exchange(southP, nextSouthP);
+                        Components.down = components.Get(nextSouthP);
                     }
+                    if (ConnectDirections().Contains(Direction.East))
+                    {
+                        Point eastP = GetNextPoint(point, Direction.East);
+                        Point nextEastP = GetNextPoint(eastP, Direction.West);
+                        components.Exchange(eastP, nextEastP);
+                        Components.right = components.Get(nextEastP);
+                    }
+
                     playerPosition = GetNextPoint(point, dir);
+                    events.Add(new PLMoveEvent(point, playerPosition, Components));
                     break;
                 default:
                     throw new ArgumentException("Invalid direction");
@@ -673,6 +778,10 @@ namespace Puzzle
             foreach (var d in directions)
             {
                 Point p = GetNextPoint(playerPosition, d);
+                if (p.X < 0 || p.X >= size || p.Y < 0 || p.Y >= size)
+                {
+                    continue; //範囲外は無視
+                }
                 Point wallP = GetNextWallPoint(playerPosition, d);
                 var tag = components.GetTag(playerPosition);
                 var tag2 = components.GetTag(p);
@@ -695,21 +804,25 @@ namespace Puzzle
                     }
                 }
             }
-            return (north, south, east, west);
+            return (north, south, west, east);
         }
-        public void Connect()
+        public void Connect(List<IEvent> events)
         {
             isConnected = CanConnect();
-
+            if (IsConnecting())
+            {
+                events.Add(new PLConnectEvent(isConnected));
+            }
         }
 
-        public void DisConnect()
+        public void DisConnect(List<IEvent> events)
         {
+            events.Add(new PLDisConnectEvent(isConnected));
             isConnected = (false, false, false, false);
         }
 
 
-        void LoopProcess()
+        void LoopProcess(List<IEvent> events) //!ループの再利用周りのバグ直してなさそう
         {
             HashSet<(Point p, Component c, Tag tag)> L = new HashSet<(Point p, Component c, Tag tag)>();
             HashSet<(Point p, Component c, Tag tag)> O = new HashSet<(Point p, Component c, Tag tag)>();
@@ -800,6 +913,20 @@ namespace Puzzle
                             }
                         }
                     }
+                }
+                if (newRloops.Count == 0 && newLloops.Count == 0)
+                {
+                    Debug.Log("ループなし");
+                    return;
+                }
+                Debug.Log("ループアリ");
+                foreach (var loop in newRloops)
+                {
+                    Debug.Log(loop.ToString());
+                }
+                foreach (var loop in newLloops)
+                {
+                    Debug.Log(loop.ToString());
                 }
                 var list = newRloops.ToList();
                 list.AddRange(newLloops.ToList());
@@ -896,6 +1023,7 @@ namespace Puzzle
                         //downは左から右に置換
                         //rightは上から下に置換
                         //leftは下から上に置換
+                        Debug.Log($"{upWalls.Count} {downWalls.Count} {rightWalls.Count} {leftWalls.Count}");
                         foreach (var w in upWalls)
                         {
                             var newX = w.Item1.X + deltaUp;
@@ -925,27 +1053,29 @@ namespace Puzzle
             }
         }
 
-        void Process(InputType input)
+        public List<IEvent> Process(InputType input)
         {
+            var events = new List<IEvent>();
             if (input != InputType.Connect)
             {
                 if (CanPLMove(playerPosition, (Direction)input))
                 {
-                    MovePL(playerPosition, (Direction)input);
+                    MovePL(playerPosition, (Direction)input, events);
                 }
             }
             else
             {
                 if (IsConnecting())
                 {
-                    DisConnect();
-                    LoopProcess();
+                    DisConnect(events);
+                    LoopProcess(events);
                 }
                 else
                 {
-                    Connect();
+                    Connect(events);
                 }
             }
+            return events;
         }
 
     }
@@ -986,12 +1116,28 @@ namespace Puzzle
         public EventType Type => EventType.PLMove;
         public Point From { get; }
         public Point To { get; }
+        public Direction direction
+        {
+            get
+            {
+                if (To.X == From.X && To.Y == From.Y - 2) return Direction.North;
+                else if (To.X == From.X && To.Y == From.Y + 2) return Direction.South;
+                else if (To.X == From.X + 2 && To.Y == From.Y) return Direction.East;
+                else if (To.X == From.X - 2 && To.Y == From.Y) return Direction.West;
+                else throw new ArgumentException("Invalid move");
+            }
+        }
         public (Component?, Component?, Component?, Component?) ConnectComponents { get; } //接続しているコンポーネントを管理。上、下、左、右の順番。
         public PLMoveEvent(Point from, Point to, (Component?, Component?, Component?, Component?) connectComponents)
         {
             From = from;
             To = to;
             ConnectComponents = connectComponents;
+        }
+
+        public override string ToString()
+        {
+            return $"PLMoveEvent: From({From.X}, {From.Y}) To({To.X}, {To.Y}) Direction({direction}), ConnectComponents({ConnectComponents.Item1?.Type}, {ConnectComponents.Item2?.Type}, {ConnectComponents.Item3?.Type}, {ConnectComponents.Item4?.Type})";
         }
     }
     public class PLConnectEvent : IEvent
@@ -1005,6 +1151,11 @@ namespace Puzzle
     }
     public class PLDisConnectEvent : IEvent
     {
+        public (bool, bool, bool, bool) PreConnectDirections { get; }
+        public PLDisConnectEvent((bool, bool, bool, bool) connectDirections)
+        {
+            PreConnectDirections = connectDirections;
+        }
         public EventType Type => EventType.PLDisConnect;
     }
     public class LoopDetectEvent : IEvent

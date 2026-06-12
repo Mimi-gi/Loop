@@ -1,15 +1,15 @@
 using UnityEngine;
 using Puzzle;
+using Cysharp.Threading.Tasks;
 public interface IViewer
 {
-    public void SetGameObject(GameObject obj);
-    public void Process(Puzzle.IEvent component);
-    public void Return(Puzzle.IEvent component);
+    public UniTask Process(IEvent component);
+    public UniTask Return(IEvent component);
 }
 
 public interface IMovable
 {
-    public void PropagateMove(Direction direction);
+    public UniTask PropagateMove(Point from, Point to);
 }
 
 public static class ViewUtility

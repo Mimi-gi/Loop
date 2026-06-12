@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6203351694913775168}
   - component: {fileID: 823277553107220175}
+  - component: {fileID: 5102702114706248822}
   m_Layer: 0
   m_Name: Block
   m_TagString: Untagged
@@ -91,3 +92,18 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &5102702114706248822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9043463351389955124}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce25b3abab7bc6e4fa1d1846ea0f2478, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BlockViewer
+  map: {fileID: 0}
+  comp: 8
+  MoveDuration: 0.1
