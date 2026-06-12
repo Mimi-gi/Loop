@@ -21,7 +21,10 @@ public class View : MonoBehaviour
     WholeBoardData wholeMapData;
     [Header("Presenter")]
     [SerializeField] PuzzlePresenter presenter;
+    [Header("コンフィグ")]
+    [SerializeField] float moveDuration = 0.1f;
     GameObject playerObject;
+    [SerializeField] int pixelizeUnit = 8;
     void Awake()
     {
         // Viewの初期化等に合わせてプレイヤーの初期位置を決定して渡す
@@ -64,8 +67,17 @@ public class View : MonoBehaviour
                 if (map.mapData[i, j].Type == PuzzleComponent.InitialPos)
                 {
                     playerObject = obj;
+                    var playerViewer = playerObject.GetComponent<PlayerViewer>();
                     presenter.SetPlayerViewer(playerObject.GetComponent<PlayerViewer>());
+                    playerViewer.pixelizeUnit = pixelizeUnit;
+                    playerViewer.MoveDuration = moveDuration;
+
                     Debug.Log($"Player initial position: ({i}, {j})");
+                }
+                if (obj.TryGetComponent<IMovable>(out var movable))
+                {
+                    movable.MoveDuration = moveDuration;
+                    movable.PixelizeUnit = pixelizeUnit;
                 }
                 presenter.componentToViewer[map.mapData[i, j]] = obj.GetComponent<IMovable>();
             }

@@ -8,7 +8,8 @@ public class LOOPViewer : MonoBehaviour, IViewer, IMovable
 {
     [SerializeField] Map map;
     [SerializeField] PuzzleComponent comp; //L,O,P,Lp,Op,Ppのみ。
-    [SerializeField] float MoveDuration = 0.1f;
+    public float MoveDuration { get; set; }
+    public int PixelizeUnit { get; set; } = 8;
 
     public async UniTask Process(IEvent component)
     {
@@ -22,6 +23,6 @@ public class LOOPViewer : MonoBehaviour, IViewer, IMovable
     {
         await LMotion.Create(PointToVector3(from), PointToVector3(to), MoveDuration)
                 .WithEase(Ease.Linear)
-                .Bind(x => transform.position = x.Pixelize(8));
+                .Bind(x => transform.position = x.Pixelize(PixelizeUnit));
     }
 }

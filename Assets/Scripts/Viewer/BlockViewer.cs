@@ -8,7 +8,8 @@ public class BlockViewer : MonoBehaviour, IViewer, IMovable
 {
     [SerializeField] Map map;
     [SerializeField] PuzzleComponent comp;
-    [SerializeField] float MoveDuration = 0.1f;
+    public float MoveDuration { get; set; } = 0.1f;
+    public int PixelizeUnit { get; set; } = 8;
 
     void Awake()
     {
@@ -25,6 +26,6 @@ public class BlockViewer : MonoBehaviour, IViewer, IMovable
     {
         await LMotion.Create(PointToVector3(from), PointToVector3(to), MoveDuration)
                 .WithEase(Ease.Linear)
-                .Bind(x => transform.position = x.Pixelize(8));
+                .Bind(x => transform.position = x.Pixelize(PixelizeUnit));
     }
 }

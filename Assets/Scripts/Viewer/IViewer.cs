@@ -9,6 +9,8 @@ public interface IViewer
 
 public interface IMovable
 {
+    public float MoveDuration { get; set;}
+    public int PixelizeUnit { get; set; }
     public UniTask PropagateMove(Point from, Point to);
 }
 
